@@ -15,11 +15,11 @@ export const QRCodeGuideModal: React.FC<QRCodeGuideModalProps> = ({ product, onC
   useEffect(() => {
     if (!product) return;
 
-    // Direct link to the guide url on mobile or online applet
-    const guideUrl = `${window.location.origin}/#guide-${product.id}`;
+    // Official Bulbee video tutorials portal
+    const targetUrl = 'https://videos.bulbee.com';
 
-    QRCode.toDataURL(guideUrl, {
-      width: 320,
+    QRCode.toDataURL(targetUrl, {
+      width: 340,
       margin: 2,
       color: {
         dark: '#0a0d12',
@@ -99,25 +99,34 @@ export const QRCodeGuideModal: React.FC<QRCodeGuideModalProps> = ({ product, onC
               )}
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <div className="text-xs font-plate uppercase text-[#eef1f4] flex items-center justify-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-[#3ee6d8]" />
                 <span>Scannez avec un smartphone</span>
               </div>
               <p className="text-[11px] text-[#8b949e]">
-                Ouvre instantanément le tutoriel pas-à-pas et la fiche technique atelier
+                Redirige vers les tutoriels vidéo officiels :
               </p>
+              <a
+                href="https://videos.bulbee.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#3ee6d8]/10 text-[#3ee6d8] hover:bg-[#3ee6d8]/20 font-mono text-xs font-bold transition-colors"
+              >
+                <span>videos.bulbee.com</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
             </div>
 
-            <div className="flex items-center gap-2 pt-2">
+            <div className="flex items-center gap-2 pt-1">
               <button
                 type="button"
                 onClick={handleDownloadQR}
-                className="px-3.5 py-2 rounded-xl bg-[#10141b] hover:bg-[#1a212c] border border-[#232a35] hover:border-[#3ee6d8] text-xs font-plate uppercase text-[#3ee6d8] flex items-center gap-1.5 transition-all"
-                title="Télécharger l'image PNG du QR Code pour imprimer sur vos flacons ou flyers"
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#3ee6d8] to-[#7b61ff] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider shadow-md hover:brightness-110 active:scale-95 flex items-center gap-2 transition-all cursor-pointer"
+                title="Télécharger l'image PNG haute résolution du QR Code pour imprimer sur vos flacons ou flyers"
               >
-                <Download className="w-3.5 h-3.5" />
-                <span>Télécharger PNG</span>
+                <Download className="w-4 h-4 stroke-[2.5]" />
+                <span>Télécharger QR Code HD</span>
               </button>
             </div>
           </div>
