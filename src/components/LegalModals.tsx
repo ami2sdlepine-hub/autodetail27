@@ -1,14 +1,23 @@
 import React from 'react';
 import { X, ShieldCheck, FileText, Lock, Truck } from 'lucide-react';
 import { LegalModalType } from './Footer';
+import { BusinessSettings } from './BusinessSettingsModal';
 
 interface LegalModalsProps {
   type: LegalModalType;
   onClose: () => void;
+  businessSettings?: BusinessSettings;
 }
 
-export const LegalModals: React.FC<LegalModalsProps> = ({ type, onClose }) => {
+export const LegalModals: React.FC<LegalModalsProps> = ({ type, onClose, businessSettings }) => {
   if (!type) return null;
+
+  const brand = businessSettings?.brandName || 'AUTODETAIL';
+  const owner = businessSettings?.ownerName || 'Alexandre DE LEPINE';
+  const address = businessSettings?.address || '8 Rue Saint Gilles, 27630 Heubécourt-Haricourt, France';
+  const email = businessSettings?.email || 'contact@autodetail27.fr';
+  const legal = businessSettings?.legalStatus || 'Micro-entreprise (Entreprise Individuelle)';
+  const siret = businessSettings?.siret ? `SIRET : ${businessSettings.siret}` : "SIRET en cours d'immatriculation (RCS non requis)";
 
   return (
     <div
@@ -37,16 +46,16 @@ export const LegalModals: React.FC<LegalModalsProps> = ({ type, onClose }) => {
             </div>
             <div className="text-xs sm:text-sm text-[#8b949e] space-y-3 leading-relaxed">
               <p>
-                <strong>Éditeur du site :</strong> AUTODETAIL — Entreprise individuelle (Micro-entreprise).
+                <strong>Éditeur du site :</strong> {brand} — {legal}.
               </p>
               <p>
-                <strong>Siège social / Atelier :</strong> 8 Rue Saint Gilles, 27630 Heubécourt-Haricourt, France.
+                <strong>Siège social / Atelier :</strong> {address}.
               </p>
               <p>
-                <strong>Responsable de la publication :</strong> Alexandre DE LEPINE (contact@autodetail.fr).
+                <strong>Responsable de la publication :</strong> {owner} ({email}).
               </p>
               <p>
-                <strong>Statut juridique & fiscal :</strong> Micro-entreprise dispensée d'immatriculation au registre du commerce et des sociétés (RCS) selon l'article L. 123-1-1 du code de commerce. TVA non applicable, art. 293 B du CGI.
+                <strong>Identifiant légal & fiscal :</strong> {siret}. TVA non applicable, art. 293 B du CGI.
               </p>
               <p>
                 <strong>Hébergement :</strong> Google Cloud Platform (Europe-West) & OVHcloud.
@@ -66,7 +75,7 @@ export const LegalModals: React.FC<LegalModalsProps> = ({ type, onClose }) => {
                 <strong>Article 1 — Champ d'application :</strong> Les présentes CGV s'appliquent à toutes les ventes conclues sur la boutique en ligne AUTODETAIL portant sur la gamme de produits d'entretien automobile Bulbee.
               </p>
               <p>
-                <strong>Article 2 — Prix et TVA :</strong> Les prix sont indiqués en Euros TTC. Conformément à l'article 293 B du CGI, la TVA n'est pas applicable. Les frais de livraison sont offerts dès 39,00 € TTC d'achats (ou 4,95 € pour les paniers inférieurs).
+                <strong>Article 2 — Prix et TVA :</strong> Les prix sont indiqués en Euros TTC. Conformément à l'article 293 B du CGI, la TVA n'est pas applicable. Les frais de livraison sont offerts dès 100,00 € TTC d'achats (ou 4,95 € pour les paniers inférieurs).
               </p>
               <p>
                 <strong>Article 3 — Commande et Paiement :</strong> Le règlement s'effectue en ligne par carte bancaire via la passerelle de paiement sécurisée SumUp. La commande est validée après confirmation de l'autorisation bancaire.
@@ -92,7 +101,7 @@ export const LegalModals: React.FC<LegalModalsProps> = ({ type, onClose }) => {
                 Aucune donnée n'est revendue ou cédée à des tiers. Les coordonnées de carte bancaire sont traitées directement de manière chiffrée par la passerelle agréée SumUp sans jamais transiter par nos serveurs.
               </p>
               <p>
-                Conformément au RGPD, vous disposez d'un droit d'accès, de rectification et de suppression de vos données en écrivant à contact@autodetail.fr.
+                Conformément au RGPD, vous disposez d'un droit d'accès, de rectification et de suppression de vos données en écrivant à contact@autodetail27.fr.
               </p>
             </div>
           </div>
@@ -109,10 +118,10 @@ export const LegalModals: React.FC<LegalModalsProps> = ({ type, onClose }) => {
                 <strong>Expédition 48h Colissimo / Relais :</strong> Les colis sont expédiés sous 48 heures ouvrées avec emballage renforcé anti-choc et protections étanches spéciales flacons liquides.
               </p>
               <p>
-                <strong>Frais de port :</strong> 4,95 € pour les commandes inférieures à 39 €. <strong>GRATUIT (0 €)</strong> dès 39,00 € TTC de commande.
+                <strong>Frais de port :</strong> 4,95 € pour les commandes inférieures à 100 €. <strong>GRATUIT (0 €)</strong> dès 100,00 € TTC de commande.
               </p>
               <p>
-                <strong>Retrait en main propre (27) :</strong> Retrait gratuit à l'atelier AUTODETAIL (8 Rue Saint Gilles, 27630 Heubécourt-Haricourt) sur rendez-vous après confirmation de préparation de commande.
+                <strong>Retrait à l'atelier (27) :</strong> Retrait gratuit à l'atelier AUTODETAIL (8 Rue Saint Gilles, 27630 Heubécourt-Haricourt) exclusivement sur rendez-vous après confirmation de préparation de commande.
               </p>
             </div>
           </div>

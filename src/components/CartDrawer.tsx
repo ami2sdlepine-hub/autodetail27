@@ -12,6 +12,7 @@ interface CartDrawerProps {
   onClearCart: () => void;
   shippingCost: number;
   freeShippingThreshold: number;
+  onProceedToCheckout: (deliveryMode: 'shipping' | 'pickup') => void;
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({
@@ -23,6 +24,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onClearCart,
   shippingCost,
   freeShippingThreshold,
+  onProceedToCheckout,
 }) => {
   const [deliveryMode, setDeliveryMode] = useState<'shipping' | 'pickup'>('shipping');
 
@@ -46,18 +48,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const total = subtotal + effectiveShipping;
   const remainingForFree = Math.max(0, freeShippingThreshold - subtotal);
 
-  const handleSumUpCheckout = () => {
+  const handleCheckoutClick = () => {
     soundManager.playCashRegister();
-    // Simulate SumUp Gateway preparation
-    alert(
-      `Passerelle SumUp sécurisée :\n\nMontant total : ${total
-        .toFixed(2)
-        .replace('.', ',')} € TTC\nMode : ${
-        deliveryMode === 'pickup'
-          ? 'Retrait gratuit atelier (Heubécourt-Haricourt 27)'
-          : 'Livraison à domicile 48 h'
-      }\n\nEn mode production avec votre compte SumUp, ce bouton ouvre immédiatement l'interface de paiement par carte bancaire sécurisée.`
-    );
+    onClose();
+    onProceedToCheckout(deliveryMode);
   };
 
   return (
@@ -108,7 +102,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-[#8b949e] flex items-center gap-1.5 font-medium">
                         <Truck className="w-3.5 h-3.5 text-[#3ee6d8]" />
-                        {isFreeShipping ? 'Livraison offerte atteinte !' : 'Port offert dès 39 €'}
+                        {isFreeShipping ? 'Livraison offerte atteinte !' : 'Port offert dès 100 €'}
                       </span>
                       <span className="font-mono font-bold text-[#3ee6d8]">
                         {isFreeShipping ? 'Offert' : `Encore ${remainingForFree.toFixed(2).replace('.', ',')} €`}
@@ -156,7 +150,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     }`}
                   >
                     <MapPin className="w-3.5 h-3.5" />
-                    <span>Retrait (27)</span>
+                    <span>Retrait sur RDV</span>
                   </button>
                 </div>
 
@@ -251,13 +245,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 </div>
               </div>
 
-              {/* SumUp Checkout Button */}
+              {/* Proceed to Checkout Button */}
               <button
                 type="button"
-                onClick={handleSumUpCheckout}
+                onClick={handleCheckoutClick}
                 className="w-full py-4 rounded-xl bg-gradient-to-r from-[#3ee6d8] to-[#7b61ff] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider shadow-xl shadow-[#3ee6d8]/20 hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2"
               >
-                <span>Payer avec SumUp ({total.toFixed(2).replace('.', ',')} €)</span>
+                <span>Valider la commande ({total.toFixed(2).replace('.', ',')} €)</span>
                 <ArrowRight className="w-4 h-4 stroke-[3]" />
               </button>
 

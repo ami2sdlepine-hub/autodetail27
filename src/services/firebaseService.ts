@@ -9,6 +9,10 @@ import {
 } from 'firebase/firestore';
 import {
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+  sendPasswordResetEmail,
   signOut,
   onAuthStateChanged,
   User
@@ -63,10 +67,28 @@ export async function saveSettingsToCloud(shippingCost: number, freeShippingThre
   await setDoc(docRef, { shippingCost, freeShippingThreshold }, { merge: true });
 }
 
-// Firebase Auth Login
+// Firebase Auth Login Email/Password
 export async function loginAdminWithFirebase(email: string, pass: string): Promise<User> {
   const cred = await signInWithEmailAndPassword(auth, email, pass);
   return cred.user;
+}
+
+// Create or initialize admin account with email/password
+export async function createAdminAccount(email: string, pass: string): Promise<User> {
+  const cred = await createUserWithEmailAndPassword(auth, email, pass);
+  return cred.user;
+}
+
+// Firebase Auth Google Sign-In (Direct with ami2s.d.lepine@gmail.com)
+export async function loginWithGoogle(): Promise<User> {
+  const provider = new GoogleAuthProvider();
+  const res = await signInWithPopup(auth, provider);
+  return res.user;
+}
+
+// Send Password Reset / Initialization Email
+export async function resetAdminPassword(email: string): Promise<void> {
+  await sendPasswordResetEmail(auth, email);
 }
 
 // Firebase Auth Logout

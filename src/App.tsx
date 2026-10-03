@@ -13,15 +13,18 @@ import { HowToOrder } from './components/HowToOrder';
 import { FaqAccordion } from './components/FaqAccordion';
 import { Footer, LegalModalType } from './components/Footer';
 import { CartDrawer } from './components/CartDrawer';
+import { CheckoutModal } from './components/CheckoutModal';
 import { FlyingBottleAnimation } from './components/FlyingBottleAnimation';
 import { LegalModals } from './components/LegalModals';
 import { AdminUnlockModal } from './components/AdminUnlockModal';
 import { CatalogManagerModal } from './components/CatalogManagerModal';
 import { PhotoManagerModal } from './components/PhotoManagerModal';
 import { PriceEditorModal } from './components/PriceEditorModal';
-import { StandaloneExporterModal } from './components/StandaloneExporterModal';
+import { BusinessSettingsModal, BusinessSettings } from './components/BusinessSettingsModal';
 import { LuxuryIntro } from './components/LuxuryIntro';
 import { soundManager } from './utils/soundEffects';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from './firebase';
 import {
   subscribeToProducts,
   subscribeToAuth,
@@ -124,15 +127,48 @@ export default function App() {
   const [freeShippingThreshold, setFreeShippingThreshold] = useState<number>(() => {
     try {
       const saved = localStorage.getItem('autodetail_free_shipping_threshold');
-      return saved ? parseFloat(saved) : 39.0;
+      return saved ? parseFloat(saved) : 100.0;
     } catch {
-      return 39.0;
+      return 100.0;
     }
   });
 
   const [activeModalProduct, setActiveModalProduct] = useState<Product | null>(null);
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
-  const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
+  const [checkoutDeliveryMode, setCheckoutDeliveryMode] = useState<'shipping' | 'pickup'>('shipping');
+  const [isBusinessSettingsOpen, setIsBusinessSettingsOpen] = useState<boolean>(false);
+  const [businessSettings, setBusinessSettings] = useState<BusinessSettings>(() => {
+    try {
+      const saved = localStorage.getItem('autodetail_business_settings');
+      return saved
+        ? {
+            ...JSON.parse(saved),
+            sumUpPaymentLink: JSON.parse(saved).sumUpPaymentLink || 'https://pay.sumup.com/b2c/QHQ1ZC1S',
+          }
+        : {
+            siret: '',
+            legalStatus: 'Micro-entreprise (Entreprise Individuelle)',
+            ownerName: 'Alexandre DE LEPINE',
+            brandName: 'AUTODETAIL',
+            address: '8 Rue Saint Gilles, 27630 Heubécourt-Haricourt',
+            phone: '',
+            email: 'contact@autodetail27.fr',
+            sumUpPaymentLink: 'https://pay.sumup.com/b2c/QHQ1ZC1S',
+          };
+    } catch {
+      return {
+        siret: '',
+        legalStatus: 'Micro-entreprise (Entreprise Individuelle)',
+        ownerName: 'Alexandre DE LEPINE',
+        brandName: 'AUTODETAIL',
+        address: '8 Rue Saint Gilles, 27630 Heubécourt-Haricourt',
+        phone: '',
+        email: 'contact@autodetail27.fr',
+        sumUpPaymentLink: 'https://pay.sumup.com/b2c/QHQ1ZC1S',
+      };
+    }
+  });
   const [isPriceModalOpen, setIsPriceModalOpen] = useState<boolean>(false);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState<boolean>(false);
   const [isCatalogModalOpen, setIsCatalogModalOpen] = useState<boolean>(false);
@@ -207,6 +243,20 @@ export default function App() {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleSaveBusinessSettings = (newSettings: BusinessSettings) => {
+    setBusinessSettings(newSettings);
+    try {
+      localStorage.setItem('autodetail_business_settings', JSON.stringify(newSettings));
+    } catch (e) {
+      console.error(e);
+    }
+    const docRef = doc(db, 'settings', 'business');
+    setDoc(docRef, newSettings, { merge: true }).catch((err) => {
+      console.warn('Sync business settings notice:', err);
+    });
+    showToast('Coordonnées & Lien SumUp enregistrés !');
   };
 
   const handleToggleHideProduct = (id: string) => {
@@ -483,6 +533,7 @@ export default function App() {
         onOpenPrices={() => setIsPriceModalOpen(true)}
         onOpenPhotos={() => setIsPhotoModalOpen(true)}
         onOpenCatalog={() => setIsCatalogModalOpen(true)}
+        onOpenBusinessSettings={() => setIsBusinessSettingsOpen(true)}
         onReplayIntro={() => setShowIntro(true)}
         cartPopping={cartPopping}
       />
@@ -608,9 +659,9 @@ export default function App() {
       {/* 10. Footer */}
       <Footer
         onOpenLegal={(type) => setLegalModalType(type)}
-        onOpenExport={() => setIsExportOpen(true)}
         onOpenAdmin={() => setIsAdminModalOpen(true)}
         isAdmin={isAdmin}
+        businessSettings={businessSettings}
       />
 
       {/* Cart Drawer */}
@@ -623,6 +674,26 @@ export default function App() {
         onClearCart={handleClearCart}
         shippingCost={shippingCost}
         freeShippingThreshold={freeShippingThreshold}
+        onProceedToCheckout={(mode) => {
+          setCheckoutDeliveryMode(mode);
+          setIsCheckoutOpen(true);
+        }}
+      />
+
+      {/* Real Checkout Modal (Customer info, Delivery/Pickup RDV, SumUp / Onsite payment) */}
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        cart={cart}
+        catalog={allRawProducts}
+        deliveryMode={checkoutDeliveryMode}
+        shippingCost={shippingCost}
+        freeShippingThreshold={freeShippingThreshold}
+        sumUpLink={businessSettings.sumUpPaymentLink}
+        onOrderCompleted={() => {
+          handleClearCart();
+          showToast('Commande confirmée avec succès !');
+        }}
       />
 
       {/* Product Detail Modal */}
@@ -633,7 +704,11 @@ export default function App() {
       />
 
       {/* Legal Modals */}
-      <LegalModals type={legalModalType} onClose={() => setLegalModalType(null)} />
+      <LegalModals
+        type={legalModalType}
+        onClose={() => setLegalModalType(null)}
+        businessSettings={businessSettings}
+      />
 
       {/* Price & Shipping Editor Modal */}
       <PriceEditorModal
@@ -687,10 +762,12 @@ export default function App() {
         }}
       />
 
-      {/* Standalone Exporter Modal */}
-      <StandaloneExporterModal
-        isOpen={isExportOpen}
-        onClose={() => setIsExportOpen(false)}
+      {/* Business Settings & SumUp Modal */}
+      <BusinessSettingsModal
+        isOpen={isBusinessSettingsOpen}
+        onClose={() => setIsBusinessSettingsOpen(false)}
+        settings={businessSettings}
+        onSave={handleSaveBusinessSettings}
       />
     </div>
   );

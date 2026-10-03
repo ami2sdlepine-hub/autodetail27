@@ -8,11 +8,11 @@ export const FaqAccordion: React.FC = () => {
   const faqs = [
     {
       q: 'Quels sont les délais et modalités de livraison ?',
-      a: 'Toutes les commandes sont emballées avec des calages spécifiques pour flacons de detailing et expédiées sous 48 heures ouvrées par Colissimo ou Mondial Relay partout en France. Les frais de port sont de 4,95 € et deviennent totalement offerts dès 39,00 € TTC de commande.',
+      a: 'Toutes les commandes sont emballées avec des calages spécifiques pour flacons de detailing et expédiées sous 48 heures ouvrées par Colissimo ou Mondial Relay partout en France. Les frais de port sont de 4,95 € et deviennent totalement offerts dès 100,00 € TTC de commande.',
     },
     {
-      q: 'Comment fonctionne le retrait gratuit en main propre à Heubécourt-Haricourt (27) ?',
-      a: 'Si vous résidez ou passez dans l\'Eure (27630), vous pouvez retirer votre commande gratuitement sans aucun frais de port directement à notre atelier (8 Rue Saint Gilles, Heubécourt-Haricourt). Il vous suffit de nous contacter au préalable pour convenir d\'un créneau de passage sur rendez-vous.',
+      q: 'Comment fonctionne le retrait gratuit à l\'atelier (27) ?',
+      a: 'Le retrait s\'effectue directement à notre atelier situé au 8 Rue Saint Gilles, 27630 Heubécourt-Haricourt, exclusivement sur rendez-vous (RDV convenu ensemble au préalable dès que votre commande est préparée).',
     },
     {
       q: 'Les produits Bulbee sont-ils adaptés à toutes les carrosseries et vernis ?',

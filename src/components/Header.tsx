@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingCart, ShieldCheck, MapPin, Tag, Camera, Package, Lock, Unlock, Play } from 'lucide-react';
+import { ShoppingCart, ShieldCheck, MapPin, Tag, Camera, Package, Lock, Unlock, Play, Building2 } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
 
 interface HeaderProps {
@@ -10,6 +10,7 @@ interface HeaderProps {
   onOpenPrices: () => void;
   onOpenPhotos: () => void;
   onOpenCatalog: () => void;
+  onOpenBusinessSettings: () => void;
   onReplayIntro: () => void;
   cartPopping: boolean;
 }
@@ -22,6 +23,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenPrices,
   onOpenPhotos,
   onOpenCatalog,
+  onOpenBusinessSettings,
   onReplayIntro,
   cartPopping,
 }) => {
@@ -31,7 +33,7 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="bg-[#10141b] border-b border-[#232a35] text-[11px] sm:text-xs text-[#8b949e] py-1.5 px-4 text-center flex items-center justify-center gap-2">
         <MapPin className="w-3.5 h-3.5 text-[#3ee6d8] flex-shrink-0" />
         <span>
-          Retrait gratuit en main propre à <strong className="text-[#eef1f4]">Heubécourt-Haricourt (27630, sur RDV)</strong> ou expédition soignée 48 h partout en France
+          Retrait gratuit à l'atelier <strong className="text-[#eef1f4]">uniquement sur RDV (Heubécourt-Haricourt 27)</strong> ou expédition soignée 48 h • <strong className="text-[#3ee6d8]">Port offert dès 100 €</strong>
         </span>
       </div>
 
@@ -69,10 +71,10 @@ export const Header: React.FC<HeaderProps> = ({
                 onReplayIntro();
               }}
               title="Revoir la vidéo d'introduction cinématographique"
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#151a22] border border-[#232a35] text-xs text-[#8b949e] hover:text-[#3ee6d8] hover:border-[#3ee6d8]/50 transition-colors"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-[#151a22] border border-[#232a35] text-xs text-[#8b949e] hover:text-[#3ee6d8] hover:border-[#3ee6d8]/50 transition-colors"
             >
-              <Play className="w-3 h-3 fill-current" />
-              <span>Intro</span>
+              <Play className="w-3 h-3 fill-current text-[#3ee6d8]" />
+              <span className="font-plate">Intro</span>
             </button>
 
             {/* Admin Management Tools (Unlocked) */}
@@ -101,6 +103,14 @@ export const Header: React.FC<HeaderProps> = ({
                 >
                   <Tag className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Prix & Port</span>
+                </button>
+                <button
+                  onClick={onOpenBusinessSettings}
+                  title="Informations Entreprise, SIRET & Lien SumUp"
+                  className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-[#151a22] border border-[#3ee6d8]/40 hover:border-[#3ee6d8] text-xs text-[#3ee6d8] flex items-center gap-1.5 transition-colors"
+                >
+                  <Building2 className="w-3.5 h-3.5" />
+                  <span className="hidden md:inline">SIRET & SumUp</span>
                 </button>
               </div>
             )}

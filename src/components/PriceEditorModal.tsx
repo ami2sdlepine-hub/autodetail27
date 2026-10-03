@@ -64,7 +64,7 @@ export const PriceEditorModal: React.FC<PriceEditorModalProps> = ({
     });
     setPrices(defPrices);
     setShipping('4.95');
-    setThreshold('39.00');
+    setThreshold('100.00');
   };
 
   const handleSave = () => {
@@ -78,7 +78,7 @@ export const PriceEditorModal: React.FC<PriceEditorModalProps> = ({
     });
 
     const numShipping = parseFloat(shipping.replace(',', '.')) || 4.95;
-    const numThreshold = parseFloat(threshold.replace(',', '.')) || 39.0;
+    const numThreshold = parseFloat(threshold.replace(',', '.')) || 100.0;
 
     onSave(numericPrices, numShipping, numThreshold);
     onClose();

@@ -52,7 +52,7 @@ export const Hero: React.FC<HeroProps> = ({
           {/* Badge Tagline */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#151a22] border border-[#232a35] text-xs font-semibold text-[#3ee6d8] mb-6 shadow-sm">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Formulations professionnelles haute concentration</span>
+            <span>Gamme professionnelle de detailing automobile</span>
           </div>
 
           {/* Main Headline */}
@@ -65,7 +65,7 @@ export const Hero: React.FC<HeroProps> = ({
 
           {/* Subtitle */}
           <p className="text-base sm:text-lg text-[#8b949e] max-w-xl mb-8 leading-relaxed">
-            Formulations professionnelles haute concentration calibrées pour les passionnés d'esthétique automobile et préparateurs exigeants. Efficacité immédiate sans traces ni voile résiduel.
+            Des produits professionnels conçus pour nettoyer, rénover et faire briller votre véhicule sans l'abîmer et sans laisser de traces.
           </p>
 
           {/* CTAs */}
@@ -97,11 +97,11 @@ export const Hero: React.FC<HeroProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full border-t border-[#232a35] pt-6">
             <div className="flex items-center gap-2 text-xs text-[#8b949e]">
               <CheckCircle2 className="w-4 h-4 text-[#3ddc97] flex-shrink-0" />
-              <span>Remise en main propre (27)</span>
+              <span>Atelier : retrait sur RDV uniquement (27)</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-[#8b949e]">
               <ShieldCheck className="w-4 h-4 text-[#3ee6d8] flex-shrink-0" />
-              <span>Port offert dès 39 €</span>
+              <span>Port offert dès 100 €</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-[#8b949e]">
               <Truck className="w-4 h-4 text-[#7b61ff] flex-shrink-0" />
