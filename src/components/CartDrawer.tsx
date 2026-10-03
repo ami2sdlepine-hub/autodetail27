@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Product } from '../data/products';
-import { X, Trash2, Plus, Minus, ShieldCheck, ArrowRight, Sparkles, MapPin, Truck } from 'lucide-react';
+import { X, Trash2, Plus, Minus, ShieldCheck, ArrowRight, Sparkles, MapPin, Truck, Package } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
+import { calculateParcelWeightKg, calculateCarrierRates, CarrierType } from '../utils/shippingCalculator';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -12,7 +13,7 @@ interface CartDrawerProps {
   onClearCart: () => void;
   shippingCost: number;
   freeShippingThreshold: number;
-  onProceedToCheckout: (deliveryMode: 'shipping' | 'pickup') => void;
+  onProceedToCheckout: (carrier: CarrierType) => void;
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({
@@ -26,7 +27,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   freeShippingThreshold,
   onProceedToCheckout,
 }) => {
-  const [deliveryMode, setDeliveryMode] = useState<'shipping' | 'pickup'>('shipping');
+  const [selectedCarrier, setSelectedCarrier] = useState<CarrierType>('mondial_relay');
 
   if (!isOpen) return null;
 
@@ -43,15 +44,18 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     0
   );
 
-  const isFreeShipping = subtotal >= freeShippingThreshold || deliveryMode === 'pickup';
-  const effectiveShipping = deliveryMode === 'pickup' ? 0 : isFreeShipping ? 0 : shippingCost;
+  const weightKg = calculateParcelWeightKg(cart, catalog);
+  const isFreeShipping = subtotal >= freeShippingThreshold || selectedCarrier === 'pickup';
+  const shippingOptions = calculateCarrierRates(weightKg, subtotal, freeShippingThreshold);
+  const activeOption = shippingOptions.find((opt) => opt.id === selectedCarrier) || shippingOptions[0];
+  const effectiveShipping = activeOption.price;
   const total = subtotal + effectiveShipping;
   const remainingForFree = Math.max(0, freeShippingThreshold - subtotal);
 
   const handleCheckoutClick = () => {
     soundManager.playCashRegister();
     onClose();
-    onProceedToCheckout(deliveryMode);
+    onProceedToCheckout(selectedCarrier);
   };
 
   return (
@@ -97,7 +101,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             ) : (
               <>
                 {/* Free shipping progress bar */}
-                {deliveryMode === 'shipping' && (
+                {selectedCarrier !== 'pickup' && (
                   <div className="p-3.5 rounded-2xl bg-[#151a22] border border-[#232a35] space-y-2">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-[#8b949e] flex items-center gap-1.5 font-medium">
@@ -120,38 +124,55 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   </div>
                 )}
 
-                {/* Delivery Mode Toggle */}
-                <div className="grid grid-cols-2 gap-2 p-1 bg-[#151a22] border border-[#232a35] rounded-xl text-xs font-plate">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      soundManager.playClick();
-                      setDeliveryMode('shipping');
-                    }}
-                    className={`py-2 px-3 rounded-lg uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${
-                      deliveryMode === 'shipping'
-                        ? 'bg-[#3ee6d8] text-[#0a0d12] font-black shadow-sm'
-                        : 'text-[#8b949e] hover:text-[#eef1f4]'
-                    }`}
-                  >
-                    <Truck className="w-3.5 h-3.5" />
-                    <span>Livraison 48h</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      soundManager.playClick();
-                      setDeliveryMode('pickup');
-                    }}
-                    className={`py-2 px-3 rounded-lg uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${
-                      deliveryMode === 'pickup'
-                        ? 'bg-[#3ee6d8] text-[#0a0d12] font-black shadow-sm'
-                        : 'text-[#8b949e] hover:text-[#eef1f4]'
-                    }`}
-                  >
-                    <MapPin className="w-3.5 h-3.5" />
-                    <span>Retrait sur RDV</span>
-                  </button>
+                {/* Estimated Package Weight Badge */}
+                <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-[#151a22] border border-[#232a35] text-xs">
+                  <div className="flex items-center gap-2 text-[#8b949e]">
+                    <Package className="w-3.5 h-3.5 text-[#3ee6d8]" />
+                    <span>Poids estimé du colis :</span>
+                  </div>
+                  <span className="font-mono font-bold text-[#eef1f4]">
+                    {weightKg.toFixed(2).replace('.', ',')} kg
+                  </span>
+                </div>
+
+                {/* Carrier Selection */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-mono text-[#8b949e] uppercase block">
+                    Mode d'expédition au choix :
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5 p-1 bg-[#151a22] border border-[#232a35] rounded-xl text-[11px] font-plate">
+                    {shippingOptions.map((opt) => {
+                      const isSelected = selectedCarrier === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => {
+                            soundManager.playClick();
+                            setSelectedCarrier(opt.id);
+                          }}
+                          className={`py-2 px-1.5 rounded-lg text-center flex flex-col items-center justify-center gap-0.5 transition-all ${
+                            isSelected
+                              ? 'bg-[#3ee6d8] text-[#0a0d12] font-black shadow-sm'
+                              : 'text-[#8b949e] hover:text-[#eef1f4]'
+                          }`}
+                        >
+                          <span className="truncate w-full font-bold">
+                            {opt.id === 'mondial_relay'
+                              ? '📦 Relais'
+                              : opt.id === 'colissimo'
+                              ? '🚚 Domicile'
+                              : '📍 Atelier'}
+                          </span>
+                          <span className={`text-[10px] font-mono ${isSelected ? 'text-[#0a0d12]' : 'text-[#3ee6d8]'}`}>
+                            {opt.isFree || opt.price === 0
+                              ? 'Offert'
+                              : `${opt.price.toFixed(2).replace('.', ',')} €`}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Items */}

@@ -30,7 +30,7 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
   const [legalStatus, setLegalStatus] = useState<string>(
     settings.legalStatus || 'Micro-entreprise (Entreprise Individuelle)'
   );
-  const [ownerName, setOwnerName] = useState<string>(settings.ownerName || 'Alexandre DE LEPINE');
+  const [ownerName, setOwnerName] = useState<string>(settings.ownerName || 'Pauline Pourrier');
   const [brandName, setBrandName] = useState<string>(settings.brandName || 'AUTODETAIL');
   const [address, setAddress] = useState<string>(
     settings.address || '8 Rue Saint Gilles, 27630 Heubécourt-Haricourt'

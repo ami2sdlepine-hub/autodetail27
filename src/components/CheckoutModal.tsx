@@ -15,17 +15,19 @@ import {
   Download,
   AlertCircle,
   Building,
+  Package,
 } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
 import { db } from '../firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { calculateParcelWeightKg, calculateCarrierRates, CarrierType } from '../utils/shippingCalculator';
 
 interface CheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
   cart: { [productId: string]: number };
   catalog: Product[];
-  deliveryMode: 'shipping' | 'pickup';
+  deliveryCarrier: CarrierType;
   shippingCost: number;
   freeShippingThreshold: number;
   onOrderCompleted: () => void;
@@ -37,12 +39,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   onClose,
   cart,
   catalog,
-  deliveryMode,
+  deliveryCarrier,
   shippingCost,
   freeShippingThreshold,
   onOrderCompleted,
   sumUpLink,
 }) => {
+  const [carrier, setCarrier] = useState<CarrierType>(deliveryCarrier);
   const [step, setStep] = useState<'form' | 'success'>('form');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +58,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [address, setAddress] = useState<string>('');
   const [postalCode, setPostalCode] = useState<string>('');
   const [city, setCity] = useState<string>('');
+  const [relayPointPreference, setRelayPointPreference] = useState<string>('');
   const [pickupDateSlot, setPickupDateSlot] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<'sumup_card' | 'onsite_pickup'>('sumup_card');
   const [completedOrderRef, setCompletedOrderRef] = useState<string>('');
@@ -74,8 +78,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     0
   );
 
-  const isFreeShipping = subtotal >= freeShippingThreshold || deliveryMode === 'pickup';
-  const effectiveShipping = deliveryMode === 'pickup' ? 0 : isFreeShipping ? 0 : shippingCost;
+  const weightKg = calculateParcelWeightKg(cart, catalog);
+  const shippingOptions = calculateCarrierRates(weightKg, subtotal, freeShippingThreshold);
+  const activeOption = shippingOptions.find((opt) => opt.id === carrier) || shippingOptions[0];
+  const effectiveShipping = activeOption.price;
   const total = subtotal + effectiveShipping;
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
@@ -85,8 +91,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       return;
     }
 
-    if (deliveryMode === 'shipping' && (!address.trim() || !postalCode.trim() || !city.trim())) {
-      setError('Veuillez renseigner votre adresse postale complète de livraison.');
+    if (carrier !== 'pickup' && (!address.trim() || !postalCode.trim() || !city.trim())) {
+      setError('Veuillez renseigner votre adresse postale complète.');
       return;
     }
 
@@ -104,10 +110,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         lastName: lastName.trim(),
         email: email.trim(),
         phone: phone.trim(),
-        address: deliveryMode === 'shipping' ? address.trim() : null,
-        postalCode: deliveryMode === 'shipping' ? postalCode.trim() : null,
-        city: deliveryMode === 'shipping' ? city.trim() : null,
-        pickupDateSlot: deliveryMode === 'pickup' ? pickupDateSlot.trim() : null,
+        address: carrier !== 'pickup' ? address.trim() : null,
+        postalCode: carrier !== 'pickup' ? postalCode.trim() : null,
+        city: carrier !== 'pickup' ? city.trim() : null,
+        relayPointPreference: carrier === 'mondial_relay' ? relayPointPreference.trim() : null,
+        pickupDateSlot: carrier === 'pickup' ? pickupDateSlot.trim() : null,
       },
       items: cartEntries.map((it) => ({
         id: it.product.id,
@@ -116,7 +123,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         volume: it.product.volume,
         quantity: it.quantity,
       })),
-      deliveryMode,
+      carrier: {
+        id: activeOption.id,
+        name: activeOption.name,
+        delay: activeOption.delay,
+      },
+      parcelWeightKg: weightKg,
       subtotal,
       shippingCost: effectiveShipping,
       total,
@@ -125,11 +137,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     };
 
     try {
-      // Save order to Firestore
       const docRef = doc(db, 'orders', orderRef);
       await setDoc(docRef, orderData);
     } catch (err) {
-      console.warn('Order saved locally (Firestore offline or rules notice):', err);
+      console.warn('Order saved locally (Firestore offline notice):', err);
     }
 
     soundManager.playCashRegister();
@@ -137,7 +148,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setStep('success');
     onOrderCompleted();
 
-    // If custom SumUp link configured and customer pays with SumUp
+    // Redirect to SumUp if chosen
     if (sumUpLink && paymentMethod === 'sumup_card') {
       setTimeout(() => {
         window.open(sumUpLink, '_blank');
@@ -153,7 +164,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       aria-modal="true"
     >
       <div
-        className="relative w-full max-w-3xl max-h-[92vh] overflow-y-auto rounded-3xl bg-[#10141b] border border-[#232a35] p-6 sm:p-8 text-[#eef1f4] shadow-2xl"
+        className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-[#10141b] border border-[#232a35] p-6 sm:p-8 text-[#eef1f4] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -166,19 +177,17 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
         {step === 'form' ? (
           <div>
-            {/* Modal Title */}
-            <div className="flex items-center gap-3 pb-6 border-b border-[#232a35] mb-6">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#232a35]">
               <div className="w-12 h-12 rounded-2xl bg-[#151a22] border border-[#232a35] flex items-center justify-center text-[#3ee6d8]">
                 <CreditCard className="w-6 h-6" />
               </div>
               <div>
                 <h3 className="font-plate text-xl sm:text-2xl text-[#eef1f4]">
-                  Finaliser ma commande • <span className="nacre-text">AUTODETAIL</span>
+                  Finaliser ma commande
                 </h3>
-                <p className="text-xs text-[#8b949e]">
-                  {deliveryMode === 'pickup'
-                    ? 'Retrait gratuit à l\'atelier sur RDV (Heubécourt-Haricourt 27)'
-                    : 'Expédition soignée 48 h partout en France'}
+                <p className="text-xs text-[#8b949e] flex items-center gap-2 mt-0.5">
+                  <Package className="w-3.5 h-3.5 text-[#3ee6d8]" />
+                  <span>Colis soigné ({weightKg.toFixed(2).replace('.', ',')} kg) • {activeOption.name}</span>
                 </p>
               </div>
             </div>
@@ -191,11 +200,47 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             )}
 
             <form onSubmit={handleSubmitOrder} className="space-y-6">
+              {/* Carrier Selection */}
+              <div>
+                <h4 className="font-plate text-xs text-[#3ee6d8] uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                  <Truck className="w-3.5 h-3.5" />
+                  <span>Mode de livraison sélectionné :</span>
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {shippingOptions.map((opt) => {
+                    const isSelected = carrier === opt.id;
+                    return (
+                      <div
+                        key={opt.id}
+                        onClick={() => {
+                          soundManager.playClick();
+                          setCarrier(opt.id);
+                        }}
+                        className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                          isSelected
+                            ? 'bg-[#151a22] border-[#3ee6d8] shadow-md shadow-[#3ee6d8]/10'
+                            : 'bg-[#10141b] border-[#232a35] opacity-70 hover:opacity-100'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-plate text-xs text-[#eef1f4]">{opt.name}</span>
+                          <span className="font-mono text-xs font-bold text-[#3ee6d8]">
+                            {opt.isFree || opt.price === 0 ? 'Offert' : `${opt.price.toFixed(2).replace('.', ',')} €`}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[#8b949e] mt-1 leading-snug">{opt.subtitle}</p>
+                        <span className="text-[10px] text-[#3ddc97] font-mono mt-1 block">⏱ {opt.delay}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Customer Personal Details */}
               <div>
                 <h4 className="font-plate text-xs text-[#3ee6d8] uppercase tracking-wider mb-3 flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5" />
-                  <span>Vos coordonnées de contact</span>
+                  <span>Vos coordonnées</span>
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -224,7 +269,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-mono text-[#8b949e] mb-1">Email pour confirmation *</label>
+                    <label className="block text-xs font-mono text-[#8b949e] mb-1">Email pour le suivi *</label>
                     <input
                       type="email"
                       required
@@ -236,7 +281,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-mono text-[#8b949e] mb-1">Téléphone mobile *</label>
+                    <label className="block text-xs font-mono text-[#8b949e] mb-1">Téléphone mobile (SMS suivi) *</label>
                     <input
                       type="tel"
                       required
@@ -249,62 +294,124 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 </div>
               </div>
 
-              {/* Delivery Address or Appointment Slot */}
-              {deliveryMode === 'shipping' ? (
-                <div>
-                  <h4 className="font-plate text-xs text-[#3ee6d8] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              {/* Delivery Address or Relais or Workshop Slot */}
+              {carrier === 'mondial_relay' && (
+                <div className="space-y-3 p-4 rounded-2xl bg-[#151a22] border border-[#232a35]">
+                  <h4 className="font-plate text-xs text-[#3ee6d8] uppercase tracking-wider flex items-center gap-1.5">
                     <Truck className="w-3.5 h-3.5" />
-                    <span>Adresse de livraison (Colissimo 48 h)</span>
+                    <span>Adresse personnelle pour trouver votre Point Relais le plus proche</span>
                   </h4>
 
-                  <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-mono text-[#8b949e] mb-1">Adresse postale *</label>
+                    <input
+                      type="text"
+                      required
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="14 Rue de la Paix"
+                      className="w-full bg-[#10141b] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2 text-xs text-[#eef1f4] outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3.5">
                     <div>
-                      <label className="block text-xs font-mono text-[#8b949e] mb-1">Adresse postale *</label>
+                      <label className="block text-xs font-mono text-[#8b949e] mb-1">Code postal *</label>
                       <input
                         type="text"
                         required
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        placeholder="14 Avenue des Champs..."
-                        className="w-full bg-[#151a22] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2.5 text-xs text-[#eef1f4] outline-none"
+                        value={postalCode}
+                        onChange={(e) => setPostalCode(e.target.value)}
+                        placeholder="75008"
+                        className="w-full bg-[#10141b] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2 text-xs text-[#eef1f4] outline-none font-mono"
                       />
                     </div>
+                    <div>
+                      <label className="block text-xs font-mono text-[#8b949e] mb-1">Ville *</label>
+                      <input
+                        type="text"
+                        required
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        placeholder="Paris"
+                        className="w-full bg-[#10141b] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2 text-xs text-[#eef1f4] outline-none"
+                      />
+                    </div>
+                  </div>
 
-                    <div className="grid grid-cols-2 gap-3.5">
-                      <div>
-                        <label className="block text-xs font-mono text-[#8b949e] mb-1">Code postal *</label>
-                        <input
-                          type="text"
-                          required
-                          value={postalCode}
-                          onChange={(e) => setPostalCode(e.target.value)}
-                          placeholder="75008"
-                          className="w-full bg-[#151a22] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2.5 text-xs text-[#eef1f4] outline-none font-mono"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-mono text-[#8b949e] mb-1">Ville *</label>
-                        <input
-                          type="text"
-                          required
-                          value={city}
-                          onChange={(e) => setCity(e.target.value)}
-                          placeholder="Paris"
-                          className="w-full bg-[#151a22] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2.5 text-xs text-[#eef1f4] outline-none"
-                        />
-                      </div>
+                  <div>
+                    <label className="block text-xs font-mono text-[#8b949e] mb-1">
+                      Point Relais ou Locker préféré (facultatif) :
+                    </label>
+                    <input
+                      type="text"
+                      value={relayPointPreference}
+                      onChange={(e) => setRelayPointPreference(e.target.value)}
+                      placeholder="Ex: Locker Station Total, ou Relais Presse Tabac..."
+                      className="w-full bg-[#10141b] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2 text-xs text-[#eef1f4] outline-none"
+                    />
+                    <p className="text-[10px] text-[#8b949e] mt-1">
+                      Si laissé vide, nous sélectionnons automatiquement le point relais le plus proche de votre code postal.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {carrier === 'colissimo' && (
+                <div className="space-y-3 p-4 rounded-2xl bg-[#151a22] border border-[#232a35]">
+                  <h4 className="font-plate text-xs text-[#3ee6d8] uppercase tracking-wider flex items-center gap-1.5">
+                    <Truck className="w-3.5 h-3.5" />
+                    <span>Adresse de livraison Colissimo 48 h à domicile</span>
+                  </h4>
+
+                  <div>
+                    <label className="block text-xs font-mono text-[#8b949e] mb-1">Adresse postale *</label>
+                    <input
+                      type="text"
+                      required
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="14 Avenue des Champs..."
+                      className="w-full bg-[#10141b] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2 text-xs text-[#eef1f4] outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-xs font-mono text-[#8b949e] mb-1">Code postal *</label>
+                      <input
+                        type="text"
+                        required
+                        value={postalCode}
+                        onChange={(e) => setPostalCode(e.target.value)}
+                        placeholder="75008"
+                        className="w-full bg-[#10141b] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2 text-xs text-[#eef1f4] outline-none font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-mono text-[#8b949e] mb-1">Ville *</label>
+                      <input
+                        type="text"
+                        required
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        placeholder="Paris"
+                        className="w-full bg-[#10141b] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2 text-xs text-[#eef1f4] outline-none"
+                      />
                     </div>
                   </div>
                 </div>
-              ) : (
+              )}
+
+              {carrier === 'pickup' && (
                 <div className="p-4 rounded-2xl bg-[#151a22] border border-[#232a35] space-y-3">
                   <div className="flex items-center gap-2 text-xs font-plate text-[#3ee6d8] uppercase">
                     <MapPin className="w-4 h-4" />
-                    <span>Retrait gratuit à l'atelier (27) sur RDV</span>
+                    <span>Retrait gratuit à l'atelier (Heubécourt-Haricourt 27) sur RDV</span>
                   </div>
                   <p className="text-xs text-[#8b949e] leading-relaxed">
                     Adresse de l'atelier : <strong>8 Rue Saint Gilles, 27630 Heubécourt-Haricourt</strong>.
-                    Indiquez vos disponibilités ci-dessous ; nous vous confirmons l'horaire par SMS/email dès que vos flacons sont prêts.
+                    Indiquez vos disponibilités ci-dessous ; nous vous confirmons l'horaire par SMS/email dès que votre commande est prête.
                   </p>
                   <div>
                     <label className="block text-xs font-mono text-[#8b949e] mb-1">
@@ -321,163 +428,143 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 </div>
               )}
 
-              {/* Payment Method Selector */}
+              {/* Payment Method Selection */}
               <div>
                 <h4 className="font-plate text-xs text-[#3ee6d8] uppercase tracking-wider mb-3 flex items-center gap-1.5">
                   <CreditCard className="w-3.5 h-3.5" />
-                  <span>Mode de règlement</span>
+                  <span>Mode de règlement sécurisé</span>
                 </h4>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2.5">
                   <label
-                    className={`p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between ${
+                    className={`flex items-start gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all ${
                       paymentMethod === 'sumup_card'
-                        ? 'bg-[#3ee6d8]/10 border-[#3ee6d8] text-[#eef1f4]'
-                        : 'bg-[#151a22] border-[#232a35] text-[#8b949e] hover:border-white/30'
+                        ? 'bg-[#151a22] border-[#3ee6d8]'
+                        : 'bg-[#10141b] border-[#232a35]'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="payment"
-                          checked={paymentMethod === 'sumup_card'}
-                          onChange={() => setPaymentMethod('sumup_card')}
-                          className="accent-[#3ee6d8]"
-                        />
-                        <span className="font-plate text-xs font-bold uppercase">
-                          Carte Bancaire (SumUp)
+                    <input
+                      type="radio"
+                      name="payment"
+                      checked={paymentMethod === 'sumup_card'}
+                      onChange={() => setPaymentMethod('sumup_card')}
+                      className="mt-1 accent-[#3ee6d8]"
+                    />
+                    <div className="flex-1 text-xs">
+                      <div className="font-plate text-[#eef1f4] flex items-center gap-2">
+                        <span>Paiement sécurisé par Carte Bancaire (SumUp Pay)</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#3ee6d8]/10 text-[#3ee6d8] font-mono">
+                          Recommandé
                         </span>
                       </div>
-                      <ShieldCheck className="w-4 h-4 text-[#3ee6d8]" />
+                      <p className="text-[#8b949e] mt-1 leading-snug">
+                        CB, Visa, Mastercard, Apple Pay via la page officielle SumUp sécurisée.
+                      </p>
                     </div>
-                    <span className="text-[11px] text-[#8b949e]">
-                      Paiement en ligne immédiat sécurisé 3D Secure SSL 256 bits.
-                    </span>
                   </label>
 
-                  {deliveryMode === 'pickup' && (
+                  {carrier === 'pickup' && (
                     <label
-                      className={`p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between ${
+                      className={`flex items-start gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all ${
                         paymentMethod === 'onsite_pickup'
-                          ? 'bg-[#3ee6d8]/10 border-[#3ee6d8] text-[#eef1f4]'
-                          : 'bg-[#151a22] border-[#232a35] text-[#8b949e] hover:border-white/30'
+                          ? 'bg-[#151a22] border-[#3ee6d8]'
+                          : 'bg-[#10141b] border-[#232a35]'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="radio"
-                            name="payment"
-                            checked={paymentMethod === 'onsite_pickup'}
-                            onChange={() => setPaymentMethod('onsite_pickup')}
-                            className="accent-[#3ee6d8]"
-                          />
-                          <span className="font-plate text-xs font-bold uppercase">
-                            Paiement sur place
-                          </span>
-                        </div>
-                        <Building className="w-4 h-4 text-[#3ddc97]" />
+                      <input
+                        type="radio"
+                        name="payment"
+                        checked={paymentMethod === 'onsite_pickup'}
+                        onChange={() => setPaymentMethod('onsite_pickup')}
+                        className="mt-1 accent-[#3ee6d8]"
+                      />
+                      <div className="flex-1 text-xs">
+                        <div className="font-plate text-[#eef1f4]">Règlement sur place au retrait</div>
+                        <p className="text-[#8b949e] mt-1 leading-snug">
+                          Paiement lors de la remise en main propre à l'atelier (CB sur TPE SumUp ou Espèces).
+                        </p>
                       </div>
-                      <span className="text-[11px] text-[#8b949e]">
-                        Réglez sur place lors du retrait (Terminal CB sans contact SumUp ou espèces).
-                      </span>
                     </label>
                   )}
                 </div>
               </div>
 
-              {/* Order Summary & Submit Button */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-[#0a0d12] border border-[#232a35] space-y-3">
-                <div className="space-y-1 text-xs font-mono text-[#8b949e]">
-                  <div className="flex justify-between">
-                    <span>Articles ({cartEntries.reduce((a, b) => a + b.quantity, 0)}) :</span>
-                    <span className="text-[#eef1f4]">{subtotal.toFixed(2).replace('.', ',')} €</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Frais de port :</span>
-                    <span className={effectiveShipping === 0 ? 'text-[#3ddc97] font-bold' : 'text-[#eef1f4]'}>
-                      {effectiveShipping === 0 ? 'Offert' : `${effectiveShipping.toFixed(2).replace('.', ',')} €`}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-base font-plate text-[#eef1f4] pt-2 border-t border-[#232a35]">
-                    <span>Montant total TTC :</span>
-                    <span className="text-[#3ee6d8] text-xl font-bold">
-                      {total.toFixed(2).replace('.', ',')} €
-                    </span>
-                  </div>
+              {/* Order Recap Banner */}
+              <div className="p-4 rounded-2xl bg-[#0a0d12] border border-[#232a35] space-y-2 text-xs font-mono">
+                <div className="flex justify-between text-[#8b949e]">
+                  <span>Articles ({cartEntries.length}) :</span>
+                  <span className="text-[#eef1f4]">{subtotal.toFixed(2).replace('.', ',')} €</span>
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-4 rounded-xl bg-gradient-to-r from-[#3ee6d8] to-[#7b61ff] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider shadow-xl shadow-[#3ee6d8]/20 hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  <span>
-                    {loading
-                      ? 'Validation en cours...'
-                      : paymentMethod === 'onsite_pickup'
-                      ? 'Confirmer ma commande (Paiement sur place)'
-                      : `Valider et Payer avec SumUp (${total.toFixed(2).replace('.', ',')} €)`}
+                <div className="flex justify-between text-[#8b949e]">
+                  <span>Expédition ({activeOption.name}) :</span>
+                  <span className={effectiveShipping === 0 ? 'text-[#3ddc97] font-bold' : 'text-[#eef1f4]'}>
+                    {effectiveShipping === 0 ? 'Offert' : `${effectiveShipping.toFixed(2).replace('.', ',')} €`}
                   </span>
-                  <ArrowRight className="w-4 h-4 stroke-[3]" />
-                </button>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-[#232a35] font-plate text-sm text-[#eef1f4]">
+                  <span>Total TTC à régler :</span>
+                  <span className="text-[#3ee6d8] text-lg font-bold">
+                    {total.toFixed(2).replace('.', ',')} €
+                  </span>
+                </div>
               </div>
+
+              {/* Submit CTA */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-4 rounded-xl bg-gradient-to-r from-[#3ee6d8] to-[#7b61ff] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider shadow-xl shadow-[#3ee6d8]/20 hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+              >
+                <span>
+                  {loading
+                    ? 'Enregistrement de la commande...'
+                    : `Confirmer ma commande (${total.toFixed(2).replace('.', ',')} €)`}
+                </span>
+                <ArrowRight className="w-4 h-4 stroke-[3]" />
+              </button>
             </form>
           </div>
         ) : (
-          /* Order Confirmed Screen */
-          <div className="py-8 text-center space-y-6">
-            <div className="w-16 h-16 rounded-full bg-[#3ddc97]/20 border-2 border-[#3ddc97] text-[#3ddc97] mx-auto flex items-center justify-center shadow-[0_0_30px_rgba(61,220,151,0.3)]">
+          <div className="text-center py-8 space-y-5">
+            <div className="w-16 h-16 rounded-full bg-[#3ddc97]/20 border border-[#3ddc97] text-[#3ddc97] mx-auto flex items-center justify-center">
               <CheckCircle2 className="w-8 h-8" />
             </div>
 
             <div className="space-y-2">
-              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-[#151a22] text-[#3ee6d8] border border-[#232a35]">
-                Commande N° {completedOrderRef}
+              <span className="text-xs font-mono text-[#3ee6d8] uppercase tracking-wider">
+                Commande Validée avec Succès
               </span>
               <h3 className="font-plate text-2xl sm:text-3xl text-[#eef1f4]">
-                Merci pour votre commande, {firstName} !
+                Merci pour votre commande !
               </h3>
-              <p className="text-xs sm:text-sm text-[#8b949e] max-w-md mx-auto leading-relaxed">
-                {deliveryMode === 'pickup'
-                  ? 'Votre commande est bien enregistrée. Notre atelier prépare vos flacons et vous recontacte au ' +
-                    phone +
-                    ' pour confirmer votre venue sur rendez-vous.'
-                  : 'Votre commande est confirmée. Vos produits seront expédiés sous 48 heures avec numéro de suivi envoyé à ' +
-                    email +
-                    '.'}
+              <p className="text-xs sm:text-sm text-[#8b949e] max-w-md mx-auto">
+                Référence : <strong className="text-[#3ee6d8] font-mono">{completedOrderRef}</strong>. Un email récapitulatif vient d'être généré.
               </p>
             </div>
 
-            {/* Order Items Recap */}
-            <div className="p-4 rounded-2xl bg-[#151a22] border border-[#232a35] max-w-lg mx-auto text-left text-xs font-mono space-y-2">
-              <div className="text-xs font-plate uppercase text-[#3ee6d8] mb-2">
-                Récapitulatif de votre commande :
+            {paymentMethod === 'sumup_card' && sumUpLink && (
+              <div className="p-4 rounded-2xl bg-[#3ee6d8]/10 border border-[#3ee6d8]/40 text-xs text-[#eef1f4] max-w-md mx-auto space-y-3">
+                <p>
+                  Votre page de paiement SumUp officielle s'ouvre dans un nouvel onglet pour régler par CB ({total.toFixed(2).replace('.', ',')} €).
+                </p>
+                <a
+                  href={sumUpLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#3ee6d8] text-[#0a0d12] font-plate text-xs uppercase tracking-wider font-black shadow-lg hover:brightness-110"
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>Ouvrir la page de paiement SumUp</span>
+                </a>
               </div>
-              {cartEntries.map((it) => (
-                <div key={it.product.id} className="flex justify-between text-[#eef1f4]">
-                  <span>
-                    {it.quantity}x {it.product.name} ({it.product.volume})
-                  </span>
-                  <span>{(it.product.price * it.quantity).toFixed(2).replace('.', ',')} €</span>
-                </div>
-              ))}
-              <div className="pt-2 border-t border-[#232a35] flex justify-between font-bold text-sm">
-                <span>Total réglé TTC :</span>
-                <span className="text-[#3ee6d8]">{total.toFixed(2).replace('.', ',')} €</span>
-              </div>
-            </div>
+            )}
 
-            <div className="pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-8 py-3 rounded-xl bg-[#3ee6d8] hover:bg-[#3ddc97] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider transition-all"
-              >
-                Retour à la boutique
-              </button>
-            </div>
+            <button
+              onClick={onClose}
+              className="px-6 py-2.5 rounded-xl bg-[#151a22] border border-[#232a35] text-xs font-plate uppercase text-[#eef1f4] hover:bg-[#1a212c] transition-all"
+            >
+              Retourner à la boutique
+            </button>
           </div>
         )}
       </div>

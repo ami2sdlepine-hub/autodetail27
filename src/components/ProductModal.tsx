@@ -1,18 +1,20 @@
 import React from 'react';
 import { Product } from '../data/products';
-import { X, CheckCircle2, ShieldCheck, Sparkles, Plus, AlertCircle } from 'lucide-react';
+import { X, CheckCircle2, ShieldCheck, Sparkles, Plus, AlertCircle, QrCode } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
 
 interface ProductModalProps {
   product: Product | null;
   onClose: () => void;
   onAddToCart: (product: Product, event: React.MouseEvent<HTMLButtonElement>) => void;
+  onOpenQRCode?: (product: Product) => void;
 }
 
 export const ProductModal: React.FC<ProductModalProps> = ({
   product,
   onClose,
   onAddToCart,
+  onOpenQRCode,
 }) => {
   if (!product) return null;
 
@@ -90,8 +92,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               </div>
             </div>
 
-            {/* Quick Add CTA */}
-            <div className="mt-6">
+            {/* Quick Add CTA & QR Code */}
+            <div className="mt-6 space-y-2">
               <button
                 onClick={(e) => {
                   soundManager.playPschitt();
@@ -103,6 +105,17 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 <Plus className="w-4 h-4 stroke-[3]" />
                 <span>Ajouter au panier ({product.price.toFixed(2).replace('.', ',')} €)</span>
               </button>
+
+              {onOpenQRCode && (
+                <button
+                  type="button"
+                  onClick={() => onOpenQRCode(product)}
+                  className="w-full py-2.5 px-4 rounded-xl bg-[#151a22] hover:bg-[#1f2633] border border-[#232a35] hover:border-[#3ee6d8] text-xs font-plate uppercase text-[#3ee6d8] flex items-center justify-center gap-2 transition-all"
+                >
+                  <QrCode className="w-4 h-4 text-[#3ee6d8]" />
+                  <span>Afficher / Télécharger le QR Code & Guide</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -21,7 +21,9 @@ import { CatalogManagerModal } from './components/CatalogManagerModal';
 import { PhotoManagerModal } from './components/PhotoManagerModal';
 import { PriceEditorModal } from './components/PriceEditorModal';
 import { BusinessSettingsModal, BusinessSettings } from './components/BusinessSettingsModal';
+import { QRCodeGuideModal } from './components/QRCodeGuideModal';
 import { LuxuryIntro } from './components/LuxuryIntro';
+import { CarrierType } from './utils/shippingCalculator';
 import { soundManager } from './utils/soundEffects';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
@@ -136,7 +138,7 @@ export default function App() {
   const [activeModalProduct, setActiveModalProduct] = useState<Product | null>(null);
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
-  const [checkoutDeliveryMode, setCheckoutDeliveryMode] = useState<'shipping' | 'pickup'>('shipping');
+  const [checkoutDeliveryMode, setCheckoutDeliveryMode] = useState<CarrierType>('mondial_relay');
   const [isBusinessSettingsOpen, setIsBusinessSettingsOpen] = useState<boolean>(false);
   const [businessSettings, setBusinessSettings] = useState<BusinessSettings>(() => {
     try {
@@ -149,7 +151,7 @@ export default function App() {
         : {
             siret: '',
             legalStatus: 'Micro-entreprise (Entreprise Individuelle)',
-            ownerName: 'Alexandre DE LEPINE',
+            ownerName: 'Pauline Pourrier',
             brandName: 'AUTODETAIL',
             address: '8 Rue Saint Gilles, 27630 Heubécourt-Haricourt',
             phone: '',
@@ -160,7 +162,7 @@ export default function App() {
       return {
         siret: '',
         legalStatus: 'Micro-entreprise (Entreprise Individuelle)',
-        ownerName: 'Alexandre DE LEPINE',
+        ownerName: 'Pauline Pourrier',
         brandName: 'AUTODETAIL',
         address: '8 Rue Saint Gilles, 27630 Heubécourt-Haricourt',
         phone: '',
@@ -173,6 +175,7 @@ export default function App() {
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState<boolean>(false);
   const [isCatalogModalOpen, setIsCatalogModalOpen] = useState<boolean>(false);
   const [legalModalType, setLegalModalType] = useState<LegalModalType>(null);
+  const [qrModalProduct, setQrModalProduct] = useState<Product | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [cartPopping, setCartPopping] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -686,7 +689,7 @@ export default function App() {
         onClose={() => setIsCheckoutOpen(false)}
         cart={cart}
         catalog={allRawProducts}
-        deliveryMode={checkoutDeliveryMode}
+        deliveryCarrier={checkoutDeliveryMode}
         shippingCost={shippingCost}
         freeShippingThreshold={freeShippingThreshold}
         sumUpLink={businessSettings.sumUpPaymentLink}
@@ -701,6 +704,13 @@ export default function App() {
         product={activeModalProduct}
         onClose={() => setActiveModalProduct(null)}
         onAddToCart={handleAddToCart}
+        onOpenQRCode={(p) => setQrModalProduct(p)}
+      />
+
+      {/* QR Code Application Guide Modal */}
+      <QRCodeGuideModal
+        product={qrModalProduct}
+        onClose={() => setQrModalProduct(null)}
       />
 
       {/* Legal Modals */}

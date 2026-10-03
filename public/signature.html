@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Signature Gmail — AUTODETAIL</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0d12;
+      color: #eef1f4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+    .card {
+      background: #10141b;
+      border: 1px solid #232a35;
+      border-radius: 24px;
+      padding: 32px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    }
+    .signature-container {
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 12px;
+      margin: 20px 0;
+    }
+    button {
+      background: linear-gradient(135deg, #3ee6d8, #7b61ff);
+      color: #0a0d12;
+      border: none;
+      font-weight: 800;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 14px 28px;
+      border-radius: 12px;
+      cursor: pointer;
+      width: 100%;
+      box-shadow: 0 4px 15px rgba(62, 230, 216, 0.3);
+      transition: all 0.2s ease;
+    }
+    button:hover {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+    .copied {
+      background: #3ddc97 !important;
+      color: #0a0d12 !important;
+    }
+    .instructions {
+      font-size: 13px;
+      color: #8b949e;
+      line-height: 1.6;
+      margin-top: 20px;
+    }
+    .step {
+      margin-bottom: 8px;
+    }
+    .step strong {
+      color: #3ee6d8;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2 style="margin: 0 0 8px 0; color: #eef1f4;">Signature Officielle Gmail</h2>
+    <p style="margin: 0; color: #8b949e; font-size: 13px;">AUTODETAIL • Pauline Pourrier</p>
+
+    <!-- Zone contenant la signature visuelle -->
+    <div class="signature-container" id="signatureBox">
+      <table cellpadding="0" cellspacing="0" border="0" style="font-family: Arial, sans-serif; font-size: 13px; color: #222; border-left: 4px solid #3ee6d8; padding-left: 14px; margin: 0;">
+        <tr>
+          <td>
+            <div style="font-size: 17px; font-weight: bold; color: #111; letter-spacing: 0.3px;">Pauline Pourrier</div>
+            <div style="font-size: 12px; font-weight: bold; color: #7b61ff; text-transform: uppercase; margin-bottom: 4px;">AUTODETAIL • Esthétique Automobile</div>
+            <div style="font-size: 12px; color: #444; margin-bottom: 8px;">
+              Gamme Officielle <strong>Bulbee Automobile</strong>
+            </div>
+
+            <div style="font-size: 12px; color: #222; margin-bottom: 3px;">
+              ✉️ <strong>Email :</strong> <a href="mailto:contact@autodetail27.fr" style="color: #111; text-decoration: none; font-weight: bold;">contact@autodetail27.fr</a>
+            </div>
+            <div style="font-size: 12px; color: #222; margin-bottom: 3px;">
+              📍 <strong>Atelier :</strong> 8 Rue Saint Gilles, 27630 Heubécourt-Haricourt (Normandie)
+            </div>
+            <div style="font-size: 12px; color: #222; margin-bottom: 8px;">
+              🛍️ <strong>Boutique :</strong> <a href="https://ais-pre-3lnnqt7dosvqyhjyzmsd7a-731885697804.europe-west2.run.app" style="color: #008f84; font-weight: bold; text-decoration: underline;">Accéder à la boutique Bulbee &rarr;</a>
+            </div>
+
+            <div style="font-size: 11px; color: #666; font-style: italic; margin-top: 6px;">
+              Expédition soignée 48 h en France &amp; Retrait à l'atelier sur rendez-vous (27)
+            </div>
+            <div style="font-size: 10px; color: #999; margin-top: 3px;">
+              Entreprise Individuelle — TVA non applicable, art. 293 B du CGI
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <button id="copyBtn" onclick="copySignature()">📋 Copier la signature en 1 clic</button>
+
+    <div class="instructions">
+      <div class="step"><strong>Étape 1 :</strong> Cliquez sur le bouton violet ci-dessus « Copier la signature en 1 clic ».</div>
+      <div class="step"><strong>Étape 2 :</strong> Allez dans <strong>Gmail</strong>, cliquez sur la <strong>Roue crantée ⚙️</strong> en haut à droite &gt; <strong>« Voir tous les paramètres »</strong>.</div>
+      <div class="step"><strong>Étape 3 :</strong> Descendez jusqu'à <strong>« Signature »</strong>, cliquez dans le grand rectangle blanc.</div>
+      <div class="step"><strong>Étape 4 :</strong> Faites <strong>Clic droit &gt; Coller</strong> (ou <kbd>Ctrl + V</kbd>).</div>
+      <div class="step"><strong>Étape 5 :</strong> Descendez tout en bas de la page Gmail et cliquez sur <strong>« Enregistrer les modifications »</strong>.</div>
+    </div>
+  </div>
+
+  <script>
+    function copySignature() {
+      const container = document.getElementById('signatureBox');
+      const range = document.createRange();
+      range.selectNode(container);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+
+      try {
+        document.execCommand('copy');
+        window.getSelection().removeAllRanges();
+        const btn = document.getElementById('copyBtn');
+        btn.innerText = '✓ Signature copiée ! Collez-la dans Gmail (Ctrl+V)';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.innerText = '📋 Copier la signature en 1 clic';
+          btn.classList.remove('copied');
+        }, 4000);
+      } catch (err) {
+        alert('Veuillez sélectionner la signature avec votre souris et faire Ctrl+C.');
+      }
+    }
+  </script>
+</body>
+</html>

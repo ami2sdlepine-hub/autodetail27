@@ -32,20 +32,22 @@ export const PhotoManagerModal: React.FC<PhotoManagerModalProps> = ({
     if (lower.includes('tireshine')) return 'TS150';
 
     if (
+      lower.includes('sacochenue') ||
+      lower.includes('sacochebulbeenue') ||
+      lower.includes('sacocheseule') ||
+      lower.includes('sacochevide')
+    ) return 'SBN';
+
+    if (
       lower.includes('pack') ||
       lower.includes('kitcomplet') ||
+      lower.includes('sacochebulbee') ||
       lower.includes('sacochekit') ||
       lower.includes('sacochepack') ||
       lower.includes('coffret') ||
       lower.includes('bulbeekit') ||
       lower.includes('kitbulbee')
     ) return 'SB';
-
-    if (
-      lower.includes('sacochenue') ||
-      lower.includes('sacocheseule') ||
-      lower.includes('sacochevide')
-    ) return 'SBN';
 
     if (lower.includes('kit')) return 'SB';
     if (lower.includes('sacoche')) return 'SBN';
