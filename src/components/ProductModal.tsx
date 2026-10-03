@@ -80,16 +80,35 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               </div>
 
               {/* Stock notice */}
-              <div className="mt-2 text-xs flex items-center gap-1.5 text-[#3ddc97]">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>
-                  {product.stockStatus === 'in_stock'
-                    ? `En stock (${product.stockCount} unités dispo immédiate)`
-                    : product.stockStatus === 'low_stock'
-                    ? `Stock limité (${product.stockCount} unités restantes)`
-                    : 'Sur commande (réapprovisionnement rapide)'}
-                </span>
-              </div>
+              {(() => {
+                const isBackorder = (product.stockCount !== undefined && product.stockCount <= 0) || product.stockStatus === 'backorder';
+                const isLowStock = !isBackorder && ((product.stockCount !== undefined && product.stockCount <= 3) || product.stockStatus === 'low_stock');
+
+                if (isBackorder) {
+                  return (
+                    <div className="mt-2 text-xs flex items-center gap-1.5 text-[#b485ff]">
+                      <span className="w-2 h-2 rounded-full bg-[#7b61ff]" />
+                      <span className="font-semibold">Sur commande — Réapprovisionnement en cours (Expédié sous 4-6 jours)</span>
+                    </div>
+                  );
+                }
+
+                if (isLowStock) {
+                  return (
+                    <div className="mt-2 text-xs flex items-center gap-1.5 text-[#f59e0b]">
+                      <span className="w-2 h-2 rounded-full bg-[#f59e0b] animate-pulse" />
+                      <span className="font-bold">Plus que {product.stockCount} en stock immédiat</span>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="mt-2 text-xs flex items-center gap-1.5 text-[#3ddc97]">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>En stock ({product.stockCount} unités dispo immédiate)</span>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Quick Add CTA & QR Code */}
@@ -100,10 +119,14 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   onAddToCart(product, e);
                   onClose();
                 }}
-                className="w-full py-3 px-5 rounded-xl bg-gradient-to-r from-[#3ee6d8] to-[#7b61ff] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider shadow-lg shadow-[#3ee6d8]/20 hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2"
+                className="w-full py-3 px-5 rounded-xl bg-gradient-to-r from-[#3ee6d8] to-[#7b61ff] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider shadow-lg shadow-[#3ee6d8]/20 hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Plus className="w-4 h-4 stroke-[3]" />
-                <span>Ajouter au panier ({product.price.toFixed(2).replace('.', ',')} €)</span>
+                <span>
+                  {(product.stockCount !== undefined && product.stockCount <= 0) || product.stockStatus === 'backorder'
+                    ? `Commander sur commande (${product.price.toFixed(2).replace('.', ',')} €)`
+                    : `Ajouter au panier (${product.price.toFixed(2).replace('.', ',')} €)`}
+                </span>
               </button>
 
               {onOpenQRCode && (

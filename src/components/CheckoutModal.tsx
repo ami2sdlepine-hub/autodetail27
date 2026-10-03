@@ -21,6 +21,7 @@ import { soundManager } from '../utils/soundEffects';
 import { db } from '../firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { calculateParcelWeightKg, calculateCarrierRates, CarrierType } from '../utils/shippingCalculator';
+import { pushOrderToAppsScript } from '../services/appsScriptSync';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -142,6 +143,36 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     } catch (err) {
       console.warn('Order saved locally (Firestore offline notice):', err);
     }
+
+    // Automatically send order into Google Sheets via Apps Script Webhook (PrecosAD + Commandes_Web)
+    pushOrderToAppsScript({
+      customerName: `${firstName} ${lastName}`.trim(),
+      customerEmail: email,
+      customerPhone: phone,
+      deliveryMode: carrier === 'pickup' ? 'Retrait Atelier sur RDV (27)' : activeOption.name,
+      shippingAddress:
+        carrier === 'pickup'
+          ? 'Retrait sur RDV à l\'atelier (Heubécourt-Haricourt 27)'
+          : `${address}, ${postalCode} ${city}${relayPointPreference ? ' (Point Relais : ' + relayPointPreference + ')' : ''}`,
+      noteClient: pickupDateSlot || relayPointPreference || '',
+      subtotal,
+      shippingCost: effectiveShipping,
+      total,
+      items: cartEntries.map((e) => ({
+        code: e.product.code || e.product.id,
+        name: e.product.name,
+        quantity: e.quantity,
+        price: e.product.price,
+      })),
+    })
+      .then((res) => {
+        if (res && res.numero) {
+          setCompletedOrderRef(res.numero);
+        }
+      })
+      .catch((err) => {
+        console.warn('Apps Script sync notice:', err);
+      });
 
     soundManager.playCashRegister();
     setLoading(false);

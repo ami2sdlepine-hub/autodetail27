@@ -1,74 +1,133 @@
 import React from 'react';
-import { CATALOG, Product } from '../data/products';
-import { Sparkles, Layers, ShieldCheck, Plus, ArrowRight } from 'lucide-react';
+import { Product } from '../data/products';
+import { TrilogyConfig, DEFAULT_TRILOGY_CONFIG } from '../data/trilogy';
+import { Sparkles, Layers, ShieldCheck, Plus, ArrowRight, Eye, EyeOff, Settings } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
 
 interface PolishingTrilogyProps {
+  config?: TrilogyConfig;
+  allProducts: Product[];
   onAddMultipleToCart: (products: Product[]) => void;
   onOpenDetails: (product: Product) => void;
+  isVisible: boolean;
+  isAdmin?: boolean;
+  onToggleVisible?: (visible: boolean) => void;
+  onOpenEdit?: () => void;
 }
 
 export const PolishingTrilogy: React.FC<PolishingTrilogyProps> = ({
+  config = DEFAULT_TRILOGY_CONFIG,
+  allProducts,
   onAddMultipleToCart,
   onOpenDetails,
+  isVisible,
+  isAdmin,
+  onToggleVisible,
+  onOpenEdit,
 }) => {
-  const steps = [
-    {
-      id: 'CUT500',
-      num: '01',
-      title: 'Cut — Correction Lourde',
-      tag: 'Étape 1',
-      color: '#ef4444',
-      desc: 'Compound dégressif haute intensité. Élimine les rayures franches, tourbillons sévères et oxydation P1500.',
-    },
-    {
-      id: 'CORRECT500',
-      num: '02',
-      title: 'Correct — Finition & Brillant',
-      tag: 'Étape 2',
-      color: '#f59e0b',
-      desc: 'Polish moyen ultra-fin. Supprime les hologrammes, affine le vernis pour une clarté miroir absolue sans défaut.',
-    },
-    {
-      id: 'WAX500',
-      num: '03',
-      title: 'Wax — Protection Hybride',
-      tag: 'Étape 3',
-      color: '#10b981',
-      desc: 'Cire liquide hybride Carnauba + polymères synthétiques. Bloque les UV et les agressions extérieures pendant 6 mois.',
-    },
-  ];
+  // If hidden and not admin, do not render at all
+  if (!isVisible && !isAdmin) return null;
 
-  const trilogyProducts = steps
-    .map((s) => CATALOG.find((p) => p.id === s.id))
+  const trilogyProducts = config.steps
+    .map((s) => allProducts.find((p) => p.id === s.id))
     .filter((p): p is Product => Boolean(p));
 
-  const totalTrilogyPrice = trilogyProducts.reduce((acc, curr) => acc + curr.price, 0);
+  const rawTotal = trilogyProducts.reduce((acc, curr) => acc + curr.price, 0);
+  const discount = config.discountPercent || 0;
+  const computedPrice = discount > 0 ? rawTotal * (1 - discount / 100) : rawTotal;
+  const finalBundlePrice = config.customPrice ?? computedPrice;
 
   return (
-    <section className="py-20 px-4 sm:px-6 max-w-7xl mx-auto">
-      <div className="text-center mb-12">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#151a22] border border-[#232a35] text-xs font-semibold text-[#7b61ff] uppercase tracking-wider mb-3">
-          <Layers className="w-3.5 h-3.5" />
-          Protocole de correction complet
+    <section id="trilogie" className="py-20 px-4 sm:px-6 max-w-7xl mx-auto relative">
+      {/* Admin Notice when Hidden */}
+      {!isVisible && isAdmin && (
+        <div className="mb-8 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5 text-red-400 text-xs sm:text-sm">
+            <EyeOff className="w-5 h-5 flex-shrink-0" />
+            <span>
+              <strong>Section "Trilogie Polissage" MASQUÉE aux clients</strong> : Les visiteurs ne voient pas ce protocole.
+            </span>
+          </div>
+          {onToggleVisible && (
+            <button
+              onClick={() => {
+                soundManager.playClick();
+                onToggleVisible(true);
+              }}
+              className="px-4 py-2 rounded-xl bg-[#3ddc97] text-[#0a0d12] text-xs font-plate uppercase tracking-wider font-black hover:brightness-110 transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>Rendre visible</span>
+            </button>
+          )}
         </div>
-        <h2 className="text-3xl sm:text-5xl font-plate text-[#eef1f4]">
-          La Trilogie <span className="nacre-text">Cut, Correct, Wax</span>
-        </h2>
-        <p className="mt-3 text-sm sm:text-base text-[#8b949e] max-w-2xl mx-auto">
-          Le processus en 3 étapes adopté par les ateliers de lustrage professionnel pour éliminer les défauts et sceller un éclat showroom pérenne.
-        </p>
+      )}
+
+      {/* Header with Admin controls */}
+      <div className="flex flex-col md:flex-row items-center md:items-end justify-between mb-12 gap-6">
+        <div className="text-center md:text-left flex-1">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#151a22] border border-[#232a35] text-xs font-semibold text-[#7b61ff] uppercase tracking-wider mb-3">
+            <Layers className="w-3.5 h-3.5" />
+            {config.sectionTag}
+          </div>
+          <h2 className="text-3xl sm:text-5xl font-plate text-[#eef1f4]">
+            {config.sectionTitle.includes('Cut, Correct, Wax') ? (
+              <>
+                La Trilogie <span className="nacre-text">Cut, Correct, Wax</span>
+              </>
+            ) : (
+              config.sectionTitle
+            )}
+          </h2>
+          <p className="mt-3 text-sm sm:text-base text-[#8b949e] max-w-2xl">
+            {config.sectionDesc}
+          </p>
+        </div>
+
+        {/* Admin Quick Action Buttons */}
+        {isAdmin && (
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {onOpenEdit && (
+              <button
+                type="button"
+                onClick={() => {
+                  soundManager.playClick();
+                  onOpenEdit();
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#152e28] border border-[#3ddc97]/50 hover:border-[#3ddc97] text-xs font-plate uppercase tracking-wider text-[#3ddc97] hover:bg-[#3ddc97]/10 transition-all shadow-sm cursor-pointer"
+              >
+                <Settings className="w-4 h-4" />
+                <span>Modifier cette Trilogie</span>
+              </button>
+            )}
+
+            {onToggleVisible && isVisible && (
+              <button
+                type="button"
+                onClick={() => {
+                  soundManager.playClick();
+                  onToggleVisible(false);
+                }}
+                className="px-3.5 py-2.5 rounded-xl bg-[#151a22] hover:bg-red-500/20 border border-[#232a35] hover:border-red-500/40 text-xs font-plate uppercase text-[#8b949e] hover:text-red-400 flex items-center gap-1.5 transition-all cursor-pointer"
+                title="Masquer cette section aux visiteurs"
+              >
+                <EyeOff className="w-4 h-4" />
+                <span>Masquer</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 3 Step Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        {steps.map((st, idx) => {
-          const prod = trilogyProducts[idx];
+      <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 ${!isVisible ? 'opacity-40 grayscale-[40%]' : ''}`}>
+        {config.steps.map((st, idx) => {
+          const prod = allProducts.find((p) => p.id === st.id) || trilogyProducts[idx];
           if (!prod) return null;
 
           return (
             <div
-              key={st.id}
+              key={st.id + idx}
               className="p-6 rounded-3xl bg-[#10141b] border border-[#232a35] hover:border-[#7b61ff]/50 transition-all flex flex-col justify-between"
             >
               <div>
@@ -106,7 +165,7 @@ export const PolishingTrilogy: React.FC<PolishingTrilogyProps> = ({
                 <button
                   type="button"
                   onClick={() => onOpenDetails(prod)}
-                  className="text-xs text-[#3ee6d8] hover:underline flex items-center gap-1 font-semibold"
+                  className="text-xs text-[#3ee6d8] hover:underline flex items-center gap-1 font-semibold cursor-pointer"
                 >
                   <span>Détails</span>
                   <ArrowRight className="w-3 h-3" />
@@ -118,40 +177,46 @@ export const PolishingTrilogy: React.FC<PolishingTrilogyProps> = ({
       </div>
 
       {/* Trilogy Pack Summary Banner */}
-      <div className="conic-border-card p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+      <div className={`conic-border-card p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 ${!isVisible ? 'opacity-40' : ''}`}>
         <div>
           <div className="flex items-center gap-2 text-xs font-mono text-[#3ee6d8] uppercase font-bold mb-1">
             <Sparkles className="w-4 h-4" />
-            <span>Offre Rénovation Complète Vernis</span>
+            <span>{config.bundleTag}</span>
           </div>
           <h4 className="font-plate text-2xl sm:text-3xl text-[#eef1f4]">
-            La Trilogie Complète (3 flacons 500 ml)
+            {config.bundleTitle}
           </h4>
           <p className="text-xs sm:text-sm text-[#8b949e] mt-1">
-            Cut + Correct + Wax : Le trio indispensable pour corriger et protéger votre carrosserie.
+            {config.bundleDesc}
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-4">
           <div className="text-center sm:text-right">
-            <div className="font-plate text-3xl text-[#eef1f4]">
-              {totalTrilogyPrice.toFixed(2).replace('.', ',')} €
+            <div className="font-plate text-3xl text-[#3ee6d8]">
+              {finalBundlePrice.toFixed(2).replace('.', ',')} €
             </div>
-            <span className="text-[11px] text-[#3ddc97] font-semibold">
-              Port offert inclus
-            </span>
+            {rawTotal > finalBundlePrice ? (
+              <span className="text-xs font-mono line-through text-[#8b949e] block">
+                {rawTotal.toFixed(2).replace('.', ',')} €
+              </span>
+            ) : (
+              <span className="text-[11px] text-[#3ddc97] font-semibold block">
+                Port offert inclus
+              </span>
+            )}
           </div>
 
           <button
             type="button"
             onClick={() => {
-              soundManager.playPschitt();
+              soundManager.playCashRegister();
               onAddMultipleToCart(trilogyProducts);
             }}
-            className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-[#3ee6d8] to-[#7b61ff] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider shadow-lg shadow-[#3ee6d8]/20 hover:brightness-110 active:scale-95 transition-all flex items-center gap-2"
+            className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-[#3ee6d8] to-[#7b61ff] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider shadow-lg shadow-[#3ee6d8]/20 hover:brightness-110 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Ajouter la Trilogie ({totalTrilogyPrice.toFixed(2).replace('.', ',')} €)</span>
+            <span>Ajouter la Trilogie ({finalBundlePrice.toFixed(2).replace('.', ',')} €)</span>
           </button>
         </div>
       </div>

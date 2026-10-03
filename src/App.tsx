@@ -24,6 +24,7 @@ import { BusinessSettingsModal, BusinessSettings } from './components/BusinessSe
 import { QRCodeGuideModal } from './components/QRCodeGuideModal';
 import { PackManagerModal } from './components/PackManagerModal';
 import { DetailingPack, INITIAL_PACKS } from './data/packs';
+import { TrilogyConfig, DEFAULT_TRILOGY_CONFIG } from './data/trilogy';
 import { LuxuryIntro } from './components/LuxuryIntro';
 import { CarrierType } from './utils/shippingCalculator';
 import { soundManager } from './utils/soundEffects';
@@ -38,6 +39,7 @@ import {
   saveSettingsToCloud,
 } from './services/firebaseService';
 import { Sparkles, Camera } from 'lucide-react';
+import { fetchStockFromAppsScript } from './services/appsScriptSync';
 
 export default function App() {
   // Cinema intro state
@@ -198,6 +200,26 @@ export default function App() {
       return localStorage.getItem('autodetail_show_packs_section') !== 'false';
     } catch {
       return true;
+    }
+  });
+
+  const [showTrilogySection, setShowTrilogySection] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('autodetail_show_trilogy_section') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  const [packManagerTab, setPackManagerTab] = useState<'packs' | 'trilogy'>('packs');
+
+  // Trilogy configuration state (customizable steps, titles, products, prices)
+  const [trilogyConfig, setTrilogyConfig] = useState<TrilogyConfig>(() => {
+    try {
+      const saved = localStorage.getItem('autodetail_trilogy_config');
+      return saved ? JSON.parse(saved) : DEFAULT_TRILOGY_CONFIG;
+    } catch {
+      return DEFAULT_TRILOGY_CONFIG;
     }
   });
 
@@ -482,6 +504,76 @@ export default function App() {
     showToast('Packs et compositions mis à jour avec succès !');
   };
 
+  const handleToggleTrilogySection = (visible: boolean) => {
+    setShowTrilogySection(visible);
+    try {
+      localStorage.setItem('autodetail_show_trilogy_section', String(visible));
+    } catch {}
+    showToast(visible ? 'Section "Trilogie Polissage" affichée' : 'Section "Trilogie Polissage" masquée aux clients');
+  };
+
+  const handleSaveTrilogyConfig = (newConfig: TrilogyConfig) => {
+    setTrilogyConfig(newConfig);
+    try {
+      localStorage.setItem('autodetail_trilogy_config', JSON.stringify(newConfig));
+    } catch {}
+    showToast('Configuration de la Trilogie Polissage enregistrée !');
+  };
+
+  const handleApplyStocksFromSheet = (stocks: { [code: string]: number }, showNotice = true) => {
+    let updatedCount = 0;
+    const newOverrides = { ...productOverrides };
+
+    Object.entries(stocks).forEach(([codeOrRef, qty]) => {
+      const target = allRawProducts.find(
+        (p) =>
+          p.id.toUpperCase() === codeOrRef.toUpperCase() ||
+          p.code.toUpperCase() === codeOrRef.toUpperCase() ||
+          p.refNumber === codeOrRef
+      );
+
+      if (target) {
+        updatedCount++;
+        const currentOverride = newOverrides[target.id] || {};
+        const newStatus = qty <= 0 ? 'backorder' : qty <= 2 ? 'low_stock' : 'in_stock';
+        newOverrides[target.id] = {
+          ...currentOverride,
+          stockCount: qty,
+          stockStatus: newStatus,
+        };
+
+        // Also push to Cloud Firestore
+        updateProductInCloud({
+          ...target,
+          stockCount: qty,
+          stockStatus: newStatus,
+        }).catch(() => {});
+      }
+    });
+
+    setProductOverrides(newOverrides);
+    try {
+      localStorage.setItem('autodetail_product_overrides', JSON.stringify(newOverrides));
+    } catch {}
+
+    if (showNotice) {
+      showToast(`${updatedCount} flacons synchronisés en direct depuis LP SYSTEME !`);
+    }
+  };
+
+  // Initial stock fetch from Google Sheets API on boutique load
+  useEffect(() => {
+    fetchStockFromAppsScript()
+      .then((res) => {
+        if (res.success && res.stocks && Object.keys(res.stocks).length > 0) {
+          handleApplyStocksFromSheet(res.stocks, false);
+        }
+      })
+      .catch((err) => {
+        console.warn('Auto stock sync notice:', err);
+      });
+  }, []);
+
   const handleAddToCart = (product: Product, event?: React.MouseEvent) => {
     soundManager.playPschitt();
     if (event?.currentTarget) {
@@ -705,8 +797,17 @@ export default function App() {
 
         {/* 5. Trilogie Polissage Cut Correct Wax */}
         <PolishingTrilogy
+          config={trilogyConfig}
+          allProducts={allRawProducts}
           onAddMultipleToCart={handleAddMultipleToCart}
           onOpenDetails={(prod) => setActiveModalProduct(prod)}
+          isVisible={showTrilogySection}
+          isAdmin={isAdmin}
+          onToggleVisible={handleToggleTrilogySection}
+          onOpenEdit={() => {
+            setPackManagerTab('trilogy');
+            setIsPackManagerOpen(true);
+          }}
         />
 
         {/* 6. Comparateur Avant / Après interactif */}
@@ -833,6 +934,11 @@ export default function App() {
         onTogglePacksSection={handleTogglePacksSection}
         showBeforeAfterSection={showBeforeAfter}
         onToggleBeforeAfterSection={handleToggleBeforeAfter}
+        showTrilogySection={showTrilogySection}
+        onToggleTrilogySection={handleToggleTrilogySection}
+        trilogyConfig={trilogyConfig}
+        onSaveTrilogyConfig={handleSaveTrilogyConfig}
+        initialTab={packManagerTab}
       />
 
       {/* Admin PIN & Firebase Unlock Modal */}
@@ -862,6 +968,7 @@ export default function App() {
         onClose={() => setIsBusinessSettingsOpen(false)}
         settings={businessSettings}
         onSave={handleSaveBusinessSettings}
+        onApplyStocks={handleApplyStocksFromSheet}
       />
     </div>
   );

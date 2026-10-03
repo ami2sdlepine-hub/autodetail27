@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
-import { X, Building2, Save, CreditCard, ShieldCheck, Phone, Mail, MapPin, Check, ExternalLink } from 'lucide-react';
+import { X, Building2, Save, CreditCard, ShieldCheck, Phone, Mail, MapPin, Check, ExternalLink, RefreshCw, FileSpreadsheet, AlertCircle } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
+import {
+  getAppsScriptUrl,
+  setAppsScriptUrl,
+  getAppsScriptSecret,
+  setAppsScriptSecret,
+  fetchStockFromAppsScript,
+  StockSyncResult,
+} from '../services/appsScriptSync';
 
 export interface BusinessSettings {
   siret: string;
@@ -18,6 +26,7 @@ interface BusinessSettingsModalProps {
   onClose: () => void;
   settings: BusinessSettings;
   onSave: (newSettings: BusinessSettings) => void;
+  onApplyStocks?: (stocks: { [productCode: string]: number }) => void;
 }
 
 export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
@@ -25,6 +34,7 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
   onClose,
   settings,
   onSave,
+  onApplyStocks,
 }) => {
   const [siret, setSiret] = useState<string>(settings.siret || '');
   const [legalStatus, setLegalStatus] = useState<string>(
@@ -40,6 +50,13 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
   const [sumUpPaymentLink, setSumUpPaymentLink] = useState<string>(
     settings.sumUpPaymentLink || ''
   );
+
+  // Google Apps Script state
+  const [appsScriptUrl, setAppsScriptUrlState] = useState<string>(getAppsScriptUrl());
+  const [appsScriptSecret, setAppsScriptSecretState] = useState<string>(getAppsScriptSecret());
+  const [syncLoading, setSyncLoading] = useState<boolean>(false);
+  const [syncResult, setSyncResult] = useState<StockSyncResult | null>(null);
+
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
 
   if (!isOpen) return null;
@@ -59,12 +76,29 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
       sumUpPaymentLink: sumUpPaymentLink.trim(),
     };
 
+    setAppsScriptUrl(appsScriptUrl);
+    setAppsScriptSecret(appsScriptSecret);
     onSave(updated);
     setSavedSuccess(true);
     setTimeout(() => {
       setSavedSuccess(false);
       onClose();
     }, 1200);
+  };
+
+  const handleTestAppsScript = async () => {
+    setSyncLoading(true);
+    setSyncResult(null);
+    soundManager.playClick();
+
+    const res = await fetchStockFromAppsScript(appsScriptUrl);
+    setSyncLoading(false);
+    setSyncResult(res);
+
+    if (res.success && res.stocks && onApplyStocks) {
+      soundManager.playCashRegister();
+      onApplyStocks(res.stocks);
+    }
   };
 
   return (
@@ -81,82 +115,154 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
         <button
           onClick={onClose}
           aria-label="Fermer"
-          className="absolute top-4 right-4 sm:top-6 sm:right-6 w-9 h-9 rounded-full bg-[#151a22] border border-[#232a35] text-[#8b949e] hover:text-[#eef1f4] flex items-center justify-center"
+          className="absolute top-4 right-4 sm:top-6 sm:right-6 w-9 h-9 rounded-full bg-[#151a22] border border-[#232a35] text-[#8b949e] hover:text-[#eef1f4] flex items-center justify-center transition-colors cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#232a35]">
+        <div className="flex items-center gap-3 mb-6">
           <div className="w-12 h-12 rounded-2xl bg-[#151a22] border border-[#232a35] flex items-center justify-center text-[#3ee6d8]">
             <Building2 className="w-6 h-6" />
           </div>
           <div>
             <h3 className="font-plate text-xl sm:text-2xl text-[#eef1f4]">
-              Informations Entreprise & Paiement SumUp
+              Paramètres Entreprise & Connexions
             </h3>
             <p className="text-xs text-[#8b949e]">
-              Mettez à jour votre SIRET, coordonnées et lien de paiement SumUp
+              Coordonnées, lien SumUp et synchronisation Google Sheets / Apps Script
             </p>
           </div>
         </div>
 
         {savedSuccess && (
-          <div className="p-3 rounded-xl bg-[#3ddc97]/15 border border-[#3ddc97]/40 text-[#3ddc97] text-xs font-semibold mb-6 flex items-center gap-2">
-            <Check className="w-4 h-4" />
-            <span>Informations enregistrées et synchronisées dans le Cloud !</span>
+          <div className="mb-6 p-4 rounded-2xl bg-[#3ddc97]/15 border border-[#3ddc97]/40 text-[#3ddc97] text-xs flex items-center gap-2">
+            <Check className="w-4 h-4 flex-shrink-0" />
+            <span>Paramètres enregistrés et appliqués avec succès !</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Section 1: SumUp Payment Link */}
-          <div className="p-4 rounded-2xl bg-[#151a22] border border-[#3ee6d8]/40 space-y-3">
+          {/* Section 1: Google Sheets / Apps Script Integration */}
+          <div className="p-4 rounded-2xl bg-[#151a22] border border-[#232a35] space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-plate uppercase text-[#3ee6d8] flex items-center gap-2">
-                <CreditCard className="w-4 h-4" />
-                <span>Lien de paiement SumUp (Client)</span>
-              </label>
-              {sumUpPaymentLink && (
-                <a
-                  href={sumUpPaymentLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[11px] text-[#3ee6d8] hover:underline flex items-center gap-1 font-mono"
-                >
-                  <span>Tester le lien</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              )}
+              <div className="flex items-center gap-2 text-xs font-plate uppercase text-[#3ee6d8]">
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Synchronisation Google Sheets (Stock en Direct)</span>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#3ee6d8]/10 text-[#3ee6d8] border border-[#3ee6d8]/30">
+                Temps Réel
+              </span>
             </div>
 
+            <p className="text-xs text-[#8b949e] leading-relaxed">
+              Connectez votre projet Google Apps Script pour synchroniser automatiquement les quantités en stock avec votre tableau Google Sheets.
+            </p>
+
+            <div>
+              <label className="block text-xs font-mono text-[#8b949e] mb-1">
+                URL du Webhook Apps Script :
+              </label>
+              <input
+                type="url"
+                value={appsScriptUrl}
+                onChange={(e) => setAppsScriptUrlState(e.target.value)}
+                placeholder="https://script.google.com/macros/s/.../exec"
+                className="w-full bg-[#10141b] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2.5 text-xs text-[#eef1f4] outline-none font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-mono text-[#8b949e] mb-1 flex items-center justify-between">
+                <span>Jeton SECRET de sécurité API (anti-spam) :</span>
+                <span className="text-[10px] text-[#3ee6d8]">Configuré dans votre script</span>
+              </label>
+              <input
+                type="text"
+                value={appsScriptSecret}
+                onChange={(e) => setAppsScriptSecretState(e.target.value)}
+                placeholder="CHANGE-MOI-lp-autodetail-2026"
+                className="w-full bg-[#10141b] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2.5 text-xs text-[#eef1f4] outline-none font-mono"
+              />
+            </div>
+
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                type="button"
+                onClick={handleTestAppsScript}
+                disabled={syncLoading}
+                className="px-4 py-2 rounded-xl bg-[#1b2533] hover:bg-[#233145] border border-[#3ee6d8]/40 hover:border-[#3ee6d8] text-[#3ee6d8] text-xs font-plate uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${syncLoading ? 'animate-spin' : ''}`} />
+                <span>{syncLoading ? 'Connexion en cours...' : 'Tester & Synchroniser le stock'}</span>
+              </button>
+            </div>
+
+            {/* Sync Test Result Feedback */}
+            {syncResult && (
+              <div
+                className={`p-3.5 rounded-xl border text-xs flex items-start gap-2.5 animate-in fade-in ${
+                  syncResult.success
+                    ? 'bg-[#3ddc97]/10 border-[#3ddc97]/40 text-[#3ddc97]'
+                    : 'bg-red-500/10 border-red-500/30 text-red-400'
+                }`}
+              >
+                {syncResult.success ? (
+                  <Check className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                )}
+                <div className="space-y-1">
+                  <p className="leading-snug font-medium">{syncResult.message}</p>
+                  {!syncResult.success && (
+                    <div className="text-[11px] text-[#8b949e] pt-1 space-y-1">
+                      <p className="text-white font-semibold">Comment activer l'accès public dans Google :</p>
+                      <p>1. Ouvrez votre script dans Google Apps Script.</p>
+                      <p>2. Cliquez en haut à droite sur <strong>Déployer</strong> &gt; <strong>Gérer les déploiements</strong>.</p>
+                      <p>3. Cliquez sur le crayon (Modifier), et dans <strong>« Qui a accès »</strong>, choisissez <strong>« Tout le monde » (Anyone)</strong>.</p>
+                      <p>4. Validez en cliquant sur <strong>Déployer</strong>.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Section 2: SumUp Payment */}
+          <div className="p-4 rounded-2xl bg-[#151a22] border border-[#232a35] space-y-3">
+            <div className="flex items-center gap-2 text-xs font-plate uppercase text-[#3ee6d8]">
+              <CreditCard className="w-4 h-4" />
+              <span>Lien de Paiement SumUp Pay</span>
+            </div>
+            <p className="text-xs text-[#8b949e]">
+              Lien direct vers votre page de paiement SumUp sécurisée (ou QR code).
+            </p>
             <input
               type="url"
               value={sumUpPaymentLink}
               onChange={(e) => setSumUpPaymentLink(e.target.value)}
-              placeholder="https://pay.sumup.com/b2c/... ou https://sumup.link/..."
+              placeholder="https://pay.sumup.com/b2c/QHQ1ZC1S"
               className="w-full bg-[#10141b] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2.5 text-xs text-[#eef1f4] outline-none font-mono"
             />
-            <p className="text-[11px] text-[#8b949e] leading-relaxed">
-              Collez ici le lien créé sur votre compte SumUp (section <em>Paiements par lien</em>). Vos clients seront redirigés directement dessus pour payer par carte bancaire.
-            </p>
           </div>
 
-          {/* Section 2: Legal & SIRET */}
+          {/* Section 3: Mentions Légales & SIRET */}
           <div className="space-y-4">
             <div className="text-xs font-plate uppercase text-[#8b949e] flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-[#3ee6d8]" />
-              <span>Identité juridique & mentions légales</span>
+              <span>Identité de l'entreprise</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-mono text-[#8b949e] mb-1">
-                  Numéro SIRET :
+                  Numéro SIRET (14 chiffres) :
                 </label>
                 <input
                   type="text"
+                  maxLength={17}
                   value={siret}
                   onChange={(e) => setSiret(e.target.value)}
-                  placeholder="Ex: 912 345 678 00012 ou En cours"
+                  placeholder="Ex: 921 456 789 00012"
                   className="w-full bg-[#151a22] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2.5 text-xs text-[#eef1f4] outline-none font-mono"
                 />
               </div>
@@ -169,20 +275,22 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
                   type="text"
                   value={legalStatus}
                   onChange={(e) => setLegalStatus(e.target.value)}
-                  placeholder="Micro-entreprise (Entreprise Individuelle)"
+                  placeholder="Micro-entreprise (EI)"
                   className="w-full bg-[#151a22] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2.5 text-xs text-[#eef1f4] outline-none"
                 />
               </div>
+            </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-mono text-[#8b949e] mb-1">
-                  Nom du responsable (Publication) :
+                  Gérante / Responsable :
                 </label>
                 <input
                   type="text"
                   value={ownerName}
                   onChange={(e) => setOwnerName(e.target.value)}
-                  placeholder="Alexandre DE LEPINE"
+                  placeholder="Pauline Pourrier"
                   className="w-full bg-[#151a22] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2.5 text-xs text-[#eef1f4] outline-none"
                 />
               </div>
@@ -202,7 +310,7 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
             </div>
           </div>
 
-          {/* Section 3: Contact & Atelier Details */}
+          {/* Section 4: Contact & Atelier Details */}
           <div className="space-y-4">
             <div className="text-xs font-plate uppercase text-[#8b949e] flex items-center gap-2">
               <MapPin className="w-4 h-4 text-[#3ee6d8]" />
@@ -256,13 +364,13 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-xl bg-[#151a22] hover:bg-[#1f2633] border border-[#232a35] text-xs font-plate uppercase tracking-wider text-[#8b949e]"
+              className="px-5 py-2.5 rounded-xl bg-[#151a22] hover:bg-[#1f2633] border border-[#232a35] text-xs font-plate uppercase tracking-wider text-[#8b949e] cursor-pointer"
             >
               Annuler
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-xl bg-[#3ee6d8] hover:bg-[#3ddc97] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider transition-all flex items-center gap-2 shadow-lg shadow-[#3ee6d8]/20"
+              className="px-6 py-2.5 rounded-xl bg-[#3ee6d8] hover:bg-[#3ddc97] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider transition-all flex items-center gap-2 shadow-lg shadow-[#3ee6d8]/20 cursor-pointer"
             >
               <Save className="w-4 h-4 stroke-[2.5]" />
               <span>Enregistrer les informations</span>

@@ -18,8 +18,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onUpdateQuantity,
   onOpenDetails,
 }) => {
-  const isBackorder = product.stockStatus === 'backorder';
-  const isLowStock = product.stockStatus === 'low_stock';
+  const isBackorder = (product.stockCount !== undefined && product.stockCount <= 0) || product.stockStatus === 'backorder';
+  const isLowStock = !isBackorder && ((product.stockCount !== undefined && product.stockCount <= 3) || product.stockStatus === 'low_stock');
 
   return (
     <div className="group relative flex flex-col justify-between rounded-3xl bg-[#10141b] border border-[#232a35] hover:border-[#3ee6d8]/50 p-5 transition-all duration-300 hover:shadow-2xl hover:shadow-[#3ee6d8]/10 hover:-translate-y-1">
@@ -39,12 +39,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
           {/* Stock Chip */}
           {isBackorder ? (
-            <span className="text-[10px] font-mono text-[#8b949e] bg-[#151a22] border border-[#232a35] px-2 py-0.5 rounded-md">
-              Sur commande
+            <span className="text-[10px] font-mono text-[#b485ff] bg-[#7b61ff]/10 border border-[#7b61ff]/30 px-2 py-0.5 rounded-md font-medium">
+              Sur commande (4-6j)
             </span>
           ) : isLowStock ? (
-            <span className="text-[10px] font-mono text-[#f59e0b] bg-[#f59e0b]/10 border border-[#f59e0b]/30 px-2 py-0.5 rounded-md">
-              Stock limité ({product.stockCount})
+            <span className="text-[10px] font-mono text-[#f59e0b] bg-[#f59e0b]/15 border border-[#f59e0b]/40 px-2 py-0.5 rounded-md font-bold">
+              Plus que {product.stockCount} en stock
             </span>
           ) : (
             <span className="text-[10px] font-mono text-[#3ddc97] bg-[#3ddc97]/10 border border-[#3ddc97]/30 px-2 py-0.5 rounded-md">
@@ -133,10 +133,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             onClick={(e) => {
               onAddToCart(product, e);
             }}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#151a22] hover:bg-[#3ee6d8] border border-[#232a35] hover:border-[#3ee6d8] text-xs font-plate text-[#eef1f4] hover:text-[#0a0d12] font-black uppercase tracking-wider transition-all duration-200 active:scale-95"
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-plate font-black uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer ${
+              isBackorder
+                ? 'bg-[#151a22] hover:bg-[#7b61ff] border border-[#7b61ff]/40 hover:border-[#7b61ff] text-[#eef1f4] hover:text-[#0a0d12]'
+                : 'bg-[#151a22] hover:bg-[#3ee6d8] border border-[#232a35] hover:border-[#3ee6d8] text-[#eef1f4] hover:text-[#0a0d12]'
+            }`}
           >
             <Plus className="w-3.5 h-3.5 stroke-[3]" />
-            <span>Ajouter</span>
+            <span>{isBackorder ? 'Commander' : 'Ajouter'}</span>
           </button>
         )}
       </div>
