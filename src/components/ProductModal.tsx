@@ -88,7 +88,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   return (
                     <div className="mt-2 text-xs flex items-center gap-1.5 text-[#b485ff]">
                       <span className="w-2 h-2 rounded-full bg-[#7b61ff]" />
-                      <span className="font-semibold">Sur commande — Réapprovisionnement en cours (Expédié sous 4-6 jours)</span>
+                      <span className="font-semibold">Sur commande — Délai d'approvisionnement : 10 à 14 jours</span>
                     </div>
                   );
                 }
@@ -124,7 +124,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 <Plus className="w-4 h-4 stroke-[3]" />
                 <span>
                   {(product.stockCount !== undefined && product.stockCount <= 0) || product.stockStatus === 'backorder'
-                    ? `Commander sur commande (${product.price.toFixed(2).replace('.', ',')} €)`
+                    ? `Précommander (${product.price.toFixed(2).replace('.', ',')} €)`
                     : `Ajouter au panier (${product.price.toFixed(2).replace('.', ',')} €)`}
                 </span>
               </button>

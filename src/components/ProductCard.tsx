@@ -40,7 +40,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {/* Stock Chip */}
           {isBackorder ? (
             <span className="text-[10px] font-mono text-[#b485ff] bg-[#7b61ff]/10 border border-[#7b61ff]/30 px-2 py-0.5 rounded-md font-medium">
-              Sur commande (4-6j)
+              Sur commande (10-14j)
             </span>
           ) : isLowStock ? (
             <span className="text-[10px] font-mono text-[#f59e0b] bg-[#f59e0b]/15 border border-[#f59e0b]/40 px-2 py-0.5 rounded-md font-bold">
@@ -140,7 +140,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             }`}
           >
             <Plus className="w-3.5 h-3.5 stroke-[3]" />
-            <span>{isBackorder ? 'Commander' : 'Ajouter'}</span>
+            <span>{isBackorder ? 'Précommander' : 'Ajouter'}</span>
           </button>
         )}
       </div>

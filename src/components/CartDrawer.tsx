@@ -51,6 +51,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const effectiveShipping = activeOption.price;
   const total = subtotal + effectiveShipping;
   const remainingForFree = Math.max(0, freeShippingThreshold - subtotal);
+  const hasBackorderItem = cartEntries.some(
+    ({ product }) => (product.stockCount !== undefined && product.stockCount <= 0) || product.stockStatus === 'backorder'
+  );
 
   const handleCheckoutClick = () => {
     soundManager.playCashRegister();
@@ -191,9 +194,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-plate text-xs text-[#eef1f4] truncate">
-                          {product.name}
-                        </h4>
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="font-plate text-xs text-[#eef1f4] truncate">
+                            {product.name}
+                          </h4>
+                          {((product.stockCount !== undefined && product.stockCount <= 0) || product.stockStatus === 'backorder') && (
+                            <span className="text-[9px] font-mono text-[#b485ff] bg-[#7b61ff]/15 px-1.5 py-0.5 rounded border border-[#7b61ff]/30 flex-shrink-0">
+                              Sur commande (10-14j)
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[11px] font-mono text-[#8b949e]">
                           {product.price.toFixed(2).replace('.', ',')} € • {product.volume}
                         </span>
@@ -265,6 +275,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   </span>
                 </div>
               </div>
+
+              {hasBackorderItem && (
+                <div className="p-3 rounded-xl bg-[#7b61ff]/10 border border-[#7b61ff]/30 text-xs text-[#b485ff] flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#7b61ff] mt-1.5 flex-shrink-0" />
+                  <span>
+                    Votre panier contient des articles <strong>sur commande</strong>. Expédition globale sous <strong>10 à 14 jours ouvrés</strong>.
+                  </span>
+                </div>
+              )}
 
               {/* Proceed to Checkout Button */}
               <button
