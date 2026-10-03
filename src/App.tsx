@@ -1,0 +1,697 @@
+import React, { useState, useEffect } from 'react';
+import { CATALOG, Product } from './data/products';
+import { Header } from './components/Header';
+import { Hero } from './components/Hero';
+import { InfiniteTicker } from './components/InfiniteTicker';
+import { ProductCard } from './components/ProductCard';
+import { ProductModal } from './components/ProductModal';
+import { DetailingRoutines } from './components/DetailingRoutines';
+import { PolishingTrilogy } from './components/PolishingTrilogy';
+import { BeforeAfterComparator } from './components/BeforeAfterComparator';
+import { SacocheShowcase } from './components/SacocheShowcase';
+import { HowToOrder } from './components/HowToOrder';
+import { FaqAccordion } from './components/FaqAccordion';
+import { Footer, LegalModalType } from './components/Footer';
+import { CartDrawer } from './components/CartDrawer';
+import { FlyingBottleAnimation } from './components/FlyingBottleAnimation';
+import { LegalModals } from './components/LegalModals';
+import { AdminUnlockModal } from './components/AdminUnlockModal';
+import { CatalogManagerModal } from './components/CatalogManagerModal';
+import { PhotoManagerModal } from './components/PhotoManagerModal';
+import { PriceEditorModal } from './components/PriceEditorModal';
+import { StandaloneExporterModal } from './components/StandaloneExporterModal';
+import { LuxuryIntro } from './components/LuxuryIntro';
+import { soundManager } from './utils/soundEffects';
+import {
+  subscribeToProducts,
+  subscribeToAuth,
+  updateProductInCloud,
+  addProductToCloud,
+  toggleProductVisibilityInCloud,
+  saveSettingsToCloud,
+} from './services/firebaseService';
+import { Sparkles, Camera } from 'lucide-react';
+
+export default function App() {
+  // Cinema intro state
+  const [showIntro, setShowIntro] = useState<boolean>(() => {
+    try {
+      return !sessionStorage.getItem('autodetail_intro_seen');
+    } catch {
+      return false;
+    }
+  });
+
+  // Admin lock state
+  const [isAdmin, setIsAdmin] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('autodetail_is_admin') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(false);
+
+  // Cart state
+  const [cart, setCart] = useState<{ [productId: string]: number }>(() => {
+    try {
+      const saved = localStorage.getItem('autodetail_cart');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Custom prices override
+  const [customPrices, setCustomPrices] = useState<{ [productId: string]: number }>(() => {
+    try {
+      const saved = localStorage.getItem('autodetail_custom_prices');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Custom photos override
+  const [customPhotos, setCustomPhotos] = useState<{ [productId: string]: string }>(() => {
+    try {
+      const saved = localStorage.getItem('autodetail_custom_photos');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Hidden products state
+  const [hiddenProductIds, setHiddenProductIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('autodetail_hidden_products');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Extra user added products
+  const [extraProducts, setExtraProducts] = useState<Product[]>(() => {
+    try {
+      const saved = localStorage.getItem('autodetail_extra_products');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Product text/price/badge overrides
+  const [productOverrides, setProductOverrides] = useState<{ [id: string]: Partial<Product> }>(() => {
+    try {
+      const saved = localStorage.getItem('autodetail_product_overrides');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const [shippingCost, setShippingCost] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('autodetail_shipping_cost');
+      return saved ? parseFloat(saved) : 4.95;
+    } catch {
+      return 4.95;
+    }
+  });
+
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('autodetail_free_shipping_threshold');
+      return saved ? parseFloat(saved) : 39.0;
+    } catch {
+      return 39.0;
+    }
+  });
+
+  const [activeModalProduct, setActiveModalProduct] = useState<Product | null>(null);
+  const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
+  const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
+  const [isPriceModalOpen, setIsPriceModalOpen] = useState<boolean>(false);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState<boolean>(false);
+  const [isCatalogModalOpen, setIsCatalogModalOpen] = useState<boolean>(false);
+  const [legalModalType, setLegalModalType] = useState<LegalModalType>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [cartPopping, setCartPopping] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [flyingBottle, setFlyingBottle] = useState<{ image: string; rect: DOMRect } | null>(null);
+
+  // All products base with overrides applied
+  const allRawProducts = [...CATALOG, ...extraProducts].map((p) => {
+    const override = productOverrides[p.id] || {};
+    return {
+      ...p,
+      ...override,
+      price: override.price ?? customPrices[p.id] ?? p.price,
+      image: override.image || customPhotos[p.id] || p.image,
+    };
+  });
+
+  // Dynamic catalog reflecting custom prices, genuine photos and online visibility
+  const currentCatalog: Product[] = allRawProducts.filter(
+    (p) => !hiddenProductIds.includes(p.id)
+  );
+
+  // Real-time Cloud Firebase synchronizer
+  useEffect(() => {
+    const unsubAuth = subscribeToAuth((user) => {
+      if (user) {
+        setIsAdmin(true);
+        sessionStorage.setItem('autodetail_is_admin', 'true');
+      }
+    });
+
+    const unsubProducts = subscribeToProducts((cloudProducts) => {
+      if (cloudProducts && cloudProducts.length > 0) {
+        const cloudPrices: { [id: string]: number } = {};
+        const cloudPhotos: { [id: string]: string } = {};
+        const cloudHidden: string[] = [];
+        const cloudExtra: Product[] = [];
+
+        cloudProducts.forEach((p: any) => {
+          if (p.price) cloudPrices[p.id] = p.price;
+          if (p.image) cloudPhotos[p.id] = p.image;
+          if (p.isHidden) cloudHidden.push(p.id);
+          if (!CATALOG.some((catP) => catP.id === p.id)) {
+            cloudExtra.push(p);
+          }
+        });
+
+        if (Object.keys(cloudPrices).length > 0) {
+          setCustomPrices((prev) => ({ ...prev, ...cloudPrices }));
+        }
+        if (Object.keys(cloudPhotos).length > 0) {
+          setCustomPhotos((prev) => ({ ...prev, ...cloudPhotos }));
+        }
+        if (cloudHidden.length > 0) {
+          setHiddenProductIds((prev) => Array.from(new Set([...prev, ...cloudHidden])));
+        }
+        if (cloudExtra.length > 0) {
+          setExtraProducts(cloudExtra);
+        }
+      }
+    });
+
+    return () => {
+      unsubAuth();
+      unsubProducts();
+    };
+  }, []);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleToggleHideProduct = (id: string) => {
+    const isCurrentlyHidden = hiddenProductIds.includes(id);
+    const nextHidden = !isCurrentlyHidden;
+
+    setHiddenProductIds((prev) => {
+      const updated = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      try {
+        localStorage.setItem('autodetail_hidden_products', JSON.stringify(updated));
+      } catch (e) {
+        console.error(e);
+      }
+      return updated;
+    });
+
+    toggleProductVisibilityInCloud(id, nextHidden).catch((err) => {
+      console.warn('Sync Cloud notice:', err);
+    });
+
+    showToast('Visibilité de l\'article synchronisée dans le Cloud');
+  };
+
+  const handleAddProduct = (newProduct: Product) => {
+    setExtraProducts((prev) => {
+      const updated = [newProduct, ...prev];
+      try {
+        localStorage.setItem('autodetail_extra_products', JSON.stringify(updated));
+      } catch (e) {
+        console.error(e);
+      }
+      return updated;
+    });
+
+    addProductToCloud(newProduct).catch((err) => {
+      console.warn('Sync Cloud notice:', err);
+    });
+
+    showToast(`Article "${newProduct.name}" publié dans le Cloud Firebase !`);
+  };
+
+  const handleUpdateProduct = (updated: Product) => {
+    setProductOverrides((prev) => {
+      const next = { ...prev, [updated.id]: updated };
+      try {
+        localStorage.setItem('autodetail_product_overrides', JSON.stringify(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+
+    setExtraProducts((prev) => {
+      const exists = prev.some((p) => p.id === updated.id);
+      if (exists) {
+        const next = prev.map((p) => (p.id === updated.id ? updated : p));
+        try {
+          localStorage.setItem('autodetail_extra_products', JSON.stringify(next));
+        } catch (e) {
+          console.error(e);
+        }
+        return next;
+      }
+      return prev;
+    });
+
+    setCustomPrices((prev) => {
+      const next = { ...prev, [updated.id]: updated.price };
+      try {
+        localStorage.setItem('autodetail_custom_prices', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    if (updated.image) {
+      setCustomPhotos((prev) => {
+        const next = { ...prev, [updated.id]: updated.image };
+        try {
+          localStorage.setItem('autodetail_custom_photos', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+    }
+
+    updateProductInCloud(updated).catch((err) => {
+      console.warn('Sync Cloud notice:', err);
+    });
+
+    showToast(`Article "${updated.name}" mis à jour dans le Cloud !`);
+  };
+
+  const handleDeleteProduct = (id: string) => {
+    setExtraProducts((prev) => {
+      const updated = prev.filter((p) => p.id !== id);
+      try {
+        localStorage.setItem('autodetail_extra_products', JSON.stringify(updated));
+      } catch (e) {
+        console.error(e);
+      }
+      return updated;
+    });
+    handleToggleHideProduct(id);
+    showToast('Article retiré du catalogue');
+  };
+
+  const handleResetCatalog = () => {
+    setHiddenProductIds([]);
+    setExtraProducts([]);
+    setProductOverrides({});
+    try {
+      localStorage.removeItem('autodetail_hidden_products');
+      localStorage.removeItem('autodetail_extra_products');
+      localStorage.removeItem('autodetail_product_overrides');
+    } catch (e) {
+      console.error(e);
+    }
+    showToast('Catalogue 17 articles officiel rétabli');
+  };
+
+  const handleUpdatePhotos = (newPhotos: { [id: string]: string }) => {
+    setCustomPhotos(newPhotos);
+    try {
+      localStorage.setItem('autodetail_custom_photos', JSON.stringify(newPhotos));
+    } catch (e) {
+      console.error(e);
+    }
+
+    Object.entries(newPhotos).forEach(([id, img]) => {
+      const prod = allRawProducts.find((p) => p.id === id);
+      if (prod) {
+        updateProductInCloud({ ...prod, image: img }).catch(() => {});
+      }
+    });
+
+    showToast('Photos réelles appliquées et synchronisées dans le Cloud !');
+  };
+
+  const handleSavePrices = (
+    newPrices: { [id: string]: number },
+    newShipping: number,
+    newThreshold: number
+  ) => {
+    setCustomPrices(newPrices);
+    setShippingCost(newShipping);
+    setFreeShippingThreshold(newThreshold);
+    try {
+      localStorage.setItem('autodetail_custom_prices', JSON.stringify(newPrices));
+      localStorage.setItem('autodetail_shipping_cost', newShipping.toString());
+      localStorage.setItem('autodetail_free_shipping_threshold', newThreshold.toString());
+    } catch (e) {
+      console.error(e);
+    }
+
+    saveSettingsToCloud(newShipping, newThreshold).catch(() => {});
+    Object.entries(newPrices).forEach(([id, pr]) => {
+      const prod = allRawProducts.find((p) => p.id === id);
+      if (prod) {
+        updateProductInCloud({ ...prod, price: pr }).catch(() => {});
+      }
+    });
+
+    showToast('Tarifs et paramètres de livraison enregistrés !');
+  };
+
+  const handleAddToCart = (product: Product, event?: React.MouseEvent) => {
+    soundManager.playPschitt();
+    if (event?.currentTarget) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setFlyingBottle({ image: product.image, rect });
+      setTimeout(() => setFlyingBottle(null), 700);
+    }
+
+    setCart((prev) => {
+      const next = { ...prev, [product.id]: (prev[product.id] || 0) + 1 };
+      try {
+        localStorage.setItem('autodetail_cart', JSON.stringify(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+
+    setCartPopping(true);
+    setTimeout(() => setCartPopping(false), 350);
+  };
+
+  const handleAddMultipleToCart = (productsToAdd: Product[]) => {
+    soundManager.playPschitt();
+    setCart((prev) => {
+      const next = { ...prev };
+      productsToAdd.forEach((p) => {
+        next[p.id] = (next[p.id] || 0) + 1;
+      });
+      try {
+        localStorage.setItem('autodetail_cart', JSON.stringify(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+    setCartPopping(true);
+    setTimeout(() => setCartPopping(false), 350);
+    showToast(`Pack ajouté au panier (${productsToAdd.length} articles) !`);
+  };
+
+  const handleUpdateQuantity = (productId: string, quantity: number) => {
+    setCart((prev) => {
+      const next = { ...prev };
+      if (quantity <= 0) {
+        delete next[productId];
+      } else {
+        next[productId] = quantity;
+      }
+      try {
+        localStorage.setItem('autodetail_cart', JSON.stringify(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+  };
+
+  const handleClearCart = () => {
+    setCart({});
+    try {
+      localStorage.removeItem('autodetail_cart');
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const totalCartCount = Object.values(cart).reduce((a, b) => a + b, 0);
+
+  const filteredCatalog =
+    categoryFilter === 'all'
+      ? currentCatalog
+      : currentCatalog.filter((p) => p.category === categoryFilter);
+
+  const bestSeller = currentCatalog.find((p) => p.id === 'MC500') || currentCatalog[0];
+
+  return (
+    <div className="min-h-screen bg-[#0a0d12] text-[#eef1f4] flex flex-col font-sans selection:bg-[#3ee6d8]/20 selection:text-[#3ee6d8]">
+      {/* Optional Cinema Luxury Intro */}
+      {showIntro && (
+        <LuxuryIntro
+          onComplete={() => {
+            setShowIntro(false);
+            try {
+              sessionStorage.setItem('autodetail_intro_seen', 'true');
+            } catch {}
+          }}
+        />
+      )}
+
+      {/* Floating toast notification */}
+      {toastMessage && (
+        <div className="fixed top-20 right-6 z-50 p-4 rounded-2xl bg-[#151a22] border border-[#3ee6d8] text-[#3ee6d8] text-xs font-semibold shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top">
+          <Sparkles className="w-4 h-4" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Flying bottle animation on add to cart */}
+      {flyingBottle && (
+        <FlyingBottleAnimation image={flyingBottle.image} startRect={flyingBottle.rect} />
+      )}
+
+      {/* 1. Header */}
+      <Header
+        cartCount={totalCartCount}
+        onOpenCart={() => setIsCartOpen(true)}
+        isAdmin={isAdmin}
+        onOpenAdmin={() => setIsAdminModalOpen(true)}
+        onOpenPrices={() => setIsPriceModalOpen(true)}
+        onOpenPhotos={() => setIsPhotoModalOpen(true)}
+        onOpenCatalog={() => setIsCatalogModalOpen(true)}
+        onReplayIntro={() => setShowIntro(true)}
+        cartPopping={cartPopping}
+      />
+
+      <main className="flex-1">
+        {/* 2. Hero Section */}
+        <Hero
+          bestSeller={bestSeller}
+          onScrollToCatalog={() => {
+            const el = document.getElementById('gamme');
+            el?.scrollIntoView({ behavior: 'smooth' });
+          }}
+          onOpenBestSeller={() => setActiveModalProduct(bestSeller)}
+          onOpenPhotos={isAdmin ? () => setIsPhotoModalOpen(true) : undefined}
+        />
+
+        {/* Infinite Ticker Bar */}
+        <InfiniteTicker />
+
+        {/* 3. Catalog Section with Category Filter Pills */}
+        <section id="gamme" className="py-20 px-4 sm:px-6 max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#151a22] border border-[#232a35] text-xs font-semibold text-[#3ee6d8] uppercase tracking-wider mb-3">
+                <Sparkles className="w-3.5 h-3.5" />
+                Flacons professionnels haute efficacité
+              </div>
+              <h2 className="text-3xl sm:text-5xl font-plate text-[#eef1f4]">
+                La gamme <span className="nacre-text">Bulbee</span>
+              </h2>
+              <p className="mt-2 text-xs sm:text-sm text-[#8b949e] max-w-lg">
+                Des formulations professionnelles pour chaque étape du detailing. Cliquez sur un flacon pour voir les conseils et caractéristiques complètes.
+              </p>
+            </div>
+
+            {isAdmin && (
+              <button
+                onClick={() => setIsPhotoModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#152e28] border border-[#3ddc97]/50 hover:border-[#3ddc97] text-xs font-plate uppercase tracking-wider text-[#3ddc97] hover:bg-[#3ddc97]/10 transition-all shadow-sm"
+              >
+                <Camera className="w-4 h-4" />
+                <span>Glisser-déposer mes photos réelles</span>
+              </button>
+            )}
+          </div>
+
+          {/* Category filter pills */}
+          <div className="flex items-center flex-wrap gap-2 mb-10">
+            {[
+              { id: 'all', label: `Tous (${currentCatalog.length})` },
+              { id: 'interieur', label: 'Habitacle' },
+              { id: 'lavage', label: 'Lavage & Finition' },
+              { id: 'jantes_pneus', label: 'Jantes & Pneus' },
+              { id: 'kits', label: 'Kits & Duos' },
+              { id: 'parfums', label: 'Parfums (4 fragrances)' },
+              { id: 'polish_cires', label: 'Polish & Cires' },
+              { id: 'accessoires', label: 'Accessoires & Microfibres' },
+            ].map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => {
+                  soundManager.playClick();
+                  setCategoryFilter(cat.id);
+                }}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-plate uppercase tracking-wider transition-all ${
+                  categoryFilter === cat.id
+                    ? 'bg-[#3ee6d8] text-[#0a0d12] font-black shadow-[0_0_15px_rgba(62,230,216,0.3)]'
+                    : 'bg-[#151a22] border border-[#232a35] text-[#8b949e] hover:text-[#eef1f4] hover:border-[#3ee6d8]/40'
+                }`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Product Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredCatalog.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                quantity={cart[product.id] || 0}
+                onAddToCart={(prod, e) => handleAddToCart(prod, e)}
+                onUpdateQuantity={(id, q) => handleUpdateQuantity(id, q)}
+                onOpenDetails={(prod) => setActiveModalProduct(prod)}
+              />
+            ))}
+          </div>
+
+          <div className="mt-12 text-center">
+            <span className="text-xs font-mono text-[#8b949e] bg-[#10141b] border border-[#232a35] px-4 py-2 rounded-xl inline-block">
+              TVA non applicable, art. 293 B du CGI • Port offert dès {freeShippingThreshold.toFixed(2).replace('.', ',')} € TTC
+            </span>
+          </div>
+        </section>
+
+        {/* 4. Rituels de soin recommandés */}
+        <DetailingRoutines onAddMultipleToCart={handleAddMultipleToCart} />
+
+        {/* 5. Trilogie Polissage Cut Correct Wax */}
+        <PolishingTrilogy
+          onAddMultipleToCart={handleAddMultipleToCart}
+          onOpenDetails={(prod) => setActiveModalProduct(prod)}
+        />
+
+        {/* 6. Comparateur Avant / Après interactif */}
+        <BeforeAfterComparator />
+
+        {/* 7. La Sacoche Bulbee Showcase (Kit complet & Sacoche nue) */}
+        <SacocheShowcase
+          product={currentCatalog.find((p) => p.id === 'SB')}
+          onAddToCart={(prod, e) => handleAddToCart(prod, e)}
+          onOpenDetails={(prod) => setActiveModalProduct(prod)}
+        />
+
+        {/* 8. Comment commander (3 étapes) */}
+        <HowToOrder />
+
+        {/* 9. FAQ Accordéon (4 questions) */}
+        <FaqAccordion />
+      </main>
+
+      {/* 10. Footer */}
+      <Footer
+        onOpenLegal={(type) => setLegalModalType(type)}
+        onOpenExport={() => setIsExportOpen(true)}
+        onOpenAdmin={() => setIsAdminModalOpen(true)}
+        isAdmin={isAdmin}
+      />
+
+      {/* Cart Drawer */}
+      <CartDrawer
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        cart={cart}
+        catalog={allRawProducts}
+        onUpdateQuantity={handleUpdateQuantity}
+        onClearCart={handleClearCart}
+        shippingCost={shippingCost}
+        freeShippingThreshold={freeShippingThreshold}
+      />
+
+      {/* Product Detail Modal */}
+      <ProductModal
+        product={activeModalProduct}
+        onClose={() => setActiveModalProduct(null)}
+        onAddToCart={handleAddToCart}
+      />
+
+      {/* Legal Modals */}
+      <LegalModals type={legalModalType} onClose={() => setLegalModalType(null)} />
+
+      {/* Price & Shipping Editor Modal */}
+      <PriceEditorModal
+        isOpen={isPriceModalOpen}
+        onClose={() => setIsPriceModalOpen(false)}
+        customPrices={customPrices}
+        shippingCost={shippingCost}
+        freeShippingThreshold={freeShippingThreshold}
+        onSave={handleSavePrices}
+      />
+
+      {/* Photo Manager Modal */}
+      <PhotoManagerModal
+        isOpen={isPhotoModalOpen}
+        onClose={() => setIsPhotoModalOpen(false)}
+        customPhotos={customPhotos}
+        onUpdatePhotos={handleUpdatePhotos}
+      />
+
+      {/* Catalog Manager (Add / Edit / Remove / Toggle Visibility / Duos / Promos) */}
+      <CatalogManagerModal
+        isOpen={isCatalogModalOpen}
+        onClose={() => setIsCatalogModalOpen(false)}
+        products={allRawProducts}
+        hiddenProductIds={hiddenProductIds}
+        onToggleHideProduct={handleToggleHideProduct}
+        onAddProduct={handleAddProduct}
+        onUpdateProduct={handleUpdateProduct}
+        onDeleteProduct={handleDeleteProduct}
+        onResetCatalog={handleResetCatalog}
+      />
+
+      {/* Admin PIN & Firebase Unlock Modal */}
+      <AdminUnlockModal
+        isOpen={isAdminModalOpen}
+        onClose={() => setIsAdminModalOpen(false)}
+        isAdmin={isAdmin}
+        onLogin={(identifier) => {
+          setIsAdmin(true);
+          try {
+            sessionStorage.setItem('autodetail_is_admin', 'true');
+          } catch {}
+          showToast(`Connecté : ${identifier || 'Administrateur'} (Cloud Firebase actif)`);
+        }}
+        onLogout={() => {
+          setIsAdmin(false);
+          try {
+            sessionStorage.removeItem('autodetail_is_admin');
+          } catch {}
+          showToast('Session administrateur verrouillée');
+        }}
+      />
+
+      {/* Standalone Exporter Modal */}
+      <StandaloneExporterModal
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+      />
+    </div>
+  );
+}

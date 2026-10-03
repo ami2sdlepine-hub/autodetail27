@@ -1,0 +1,6 @@
+{
+  "name": "AUTODETAIL - Boutique Officielle Bulbee",
+  "description": "Boutique en ligne officielle AUTODETAIL. Gamme d'entretien automobile Bulbee expédiée sous 48 h ou remise en main propre à Heubécourt-Haricourt (27, sur RDV).",
+  "requestFrame": "none",
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

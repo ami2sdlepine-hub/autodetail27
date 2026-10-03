@@ -1,0 +1,108 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-dark: #0a0d12;
+    --surface-1: #10141b;
+    --surface-2: #151a22;
+    --border-color: #232a35;
+    --text-primary: #eef1f4;
+    --text-muted: #8b949e;
+    --cyan-accent: #3ee6d8;
+    --violet-accent: #7b61ff;
+  }
+
+  body {
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    font-family: 'Archivo', system-ui, sans-serif;
+    overflow-x: hidden;
+    line-height: 1.5;
+  }
+}
+
+.font-plate {
+  font-family: 'Archivo', system-ui, sans-serif;
+  font-weight: 900;
+  font-variation-settings: "wdth" 119, "wght" 900;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.nacre-text {
+  background: linear-gradient(135deg, #3ee6d8 15%, #b485ff 60%, #7b61ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.nacre-border {
+  border-image: linear-gradient(135deg, #3ee6d8, #7b61ff) 1;
+}
+
+.img-visu {
+  background: radial-gradient(circle at 50% 50%, #ffffff 0%, #f4f6fa 65%, #e2e8f0 100%);
+}
+
+.conic-border-card {
+  position: relative;
+  border-radius: 1.5rem;
+  background: #10141b;
+}
+
+.conic-border-card::before {
+  content: '';
+  position: absolute;
+  inset: -1.5px;
+  border-radius: 1.55rem;
+  padding: 1.5px;
+  background: linear-gradient(135deg, rgba(62, 230, 216, 0.4), rgba(123, 97, 255, 0.4));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+@keyframes bubble-rise {
+  0% {
+    transform: translateY(0) scale(0.8);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.6;
+  }
+  80% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(-800px) scale(1.15);
+    opacity: 0;
+  }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes float-gentle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes cart-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+.animate-cart-pop {
+  animation: cart-pop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}

@@ -1,0 +1,42 @@
+{
+  "entities": {
+    "products": {
+      "title": "Products",
+      "description": "Catalog products for Bulbee detailing",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "volume": { "type": "string" },
+        "category": { "type": "string" },
+        "stockStatus": { "type": "string" },
+        "stockCount": { "type": "number" },
+        "badge": { "type": "string" },
+        "usage": { "type": "string" },
+        "detail": { "type": "string" },
+        "image": { "type": "string" }
+      },
+      "required": ["id", "name", "price"]
+    },
+    "settings": {
+      "title": "Store Settings",
+      "description": "Shipping costs and thresholds",
+      "type": "object",
+      "properties": {
+        "shippingCost": { "type": "number" },
+        "freeShippingThreshold": { "type": "number" }
+      }
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "products",
+      "description": "Catalog products with client read and admin write"
+    },
+    "/settings/global": {
+      "schema": "settings",
+      "description": "Global store settings"
+    }
+  }
+}
