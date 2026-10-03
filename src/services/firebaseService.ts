@@ -9,6 +9,7 @@ import {
 } from 'firebase/firestore';
 import {
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
   sendPasswordResetEmail,
@@ -69,6 +70,12 @@ export async function saveSettingsToCloud(shippingCost: number, freeShippingThre
 // Firebase Auth Login Email/Password
 export async function loginAdminWithFirebase(email: string, pass: string): Promise<User> {
   const cred = await signInWithEmailAndPassword(auth, email, pass);
+  return cred.user;
+}
+
+// Create or initialize admin account with email/password if not existing in Firebase
+export async function createAdminAccount(email: string, pass: string): Promise<User> {
+  const cred = await createUserWithEmailAndPassword(auth, email, pass);
   return cred.user;
 }
 
