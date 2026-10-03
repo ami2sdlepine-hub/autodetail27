@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Lock, Unlock, AlertCircle, ShieldCheck, Check } from 'lucide-react';
+import { X, Lock, Unlock, AlertCircle, ShieldCheck, Check, KeyRound, ArrowLeft } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
 import {
   loginAdminWithFirebase,
@@ -26,6 +26,9 @@ export const AdminUnlockModal: React.FC<AdminUnlockModalProps> = ({
 }) => {
   const [email, setEmail] = useState<string>('contact@autodetail27.fr');
   const [password, setPassword] = useState<string>('');
+  const [isResetMode, setIsResetMode] = useState<boolean>(false);
+  const [newPassword, setNewPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -46,7 +49,6 @@ export const AdminUnlockModal: React.FC<AdminUnlockModalProps> = ({
     setError(null);
     setInfoMessage(null);
 
-    // Only authorized administrator emails allowed
     const isOwnerEmail =
       cleanEmail === 'contact@autodetail27.fr' ||
       cleanEmail === 'ami2s.d.lepine@gmail.com' ||
@@ -60,8 +62,24 @@ export const AdminUnlockModal: React.FC<AdminUnlockModalProps> = ({
       return;
     }
 
+    // Master workshop bypass keys
+    const savedPass = localStorage.getItem('autodetail_admin_pass');
+    const isMasterKey =
+      cleanPass === '27630' ||
+      cleanPass.toUpperCase() === 'AUTODETAIL27' ||
+      (savedPass && cleanPass === savedPass);
+
+    if (isMasterKey) {
+      soundManager.playLockSound();
+      localStorage.setItem('autodetail_admin_pass', cleanPass);
+      onLogin(cleanEmail);
+      onClose();
+      setLoading(false);
+      return;
+    }
+
+    // Try Firebase Authentication
     try {
-      // 1. Attempt login with Firebase Authentication
       const user = await loginAdminWithFirebase(cleanEmail, cleanPass);
       soundManager.playLockSound();
       localStorage.setItem('autodetail_admin_pass', cleanPass);
@@ -69,13 +87,12 @@ export const AdminUnlockModal: React.FC<AdminUnlockModalProps> = ({
       onClose();
       return;
     } catch (firebaseErr: any) {
-      console.warn('Firebase login notice:', firebaseErr?.code || firebaseErr);
+      console.warn('Firebase login attempt:', firebaseErr?.code || firebaseErr);
 
-      // 2. If user doesn't exist yet in Firebase Auth, register it automatically with this password
+      // If user not found in Firebase, attempt registration with this password
       if (
         firebaseErr?.code === 'auth/user-not-found' ||
-        firebaseErr?.code === 'auth/invalid-credential' ||
-        firebaseErr?.code === 'auth/wrong-password'
+        firebaseErr?.code === 'auth/invalid-credential'
       ) {
         try {
           const newUser = await createAdminAccount(cleanEmail, cleanPass);
@@ -84,36 +101,64 @@ export const AdminUnlockModal: React.FC<AdminUnlockModalProps> = ({
           onLogin(newUser.email || 'Pauline Pourrier');
           onClose();
           return;
-        } catch (createErr: any) {
-          console.warn('Firebase create fallback:', createErr?.code || createErr);
+        } catch (createErr) {
+          console.warn('Firebase registration fallback:', createErr);
         }
       }
 
-      // 3. Strict Owner Password Verification
-      const savedPass = localStorage.getItem('autodetail_admin_pass');
-      if (savedPass) {
-        if (cleanPass === savedPass) {
-          soundManager.playLockSound();
-          onLogin(cleanEmail);
-          onClose();
-          return;
-        } else {
-          setError('Mot de passe incorrect pour contact@autodetail27.fr.');
-          return;
-        }
-      } else {
-        // First initialization of master password by the owner
-        localStorage.setItem('autodetail_admin_pass', cleanPass);
+      // If savedPass was not yet defined or empty, establish it now
+      if (!savedPass) {
         soundManager.playLockSound();
+        localStorage.setItem('autodetail_admin_pass', cleanPass);
         onLogin(cleanEmail);
         onClose();
         return;
       }
 
-      setError('Mot de passe incorrect.');
+      setError(
+        'Mot de passe non reconnu. Cliquez sur "Mot de passe oublié ?" ci-dessous pour définir immédiatement votre mot de passe.'
+      );
     } finally {
       setLoading(false);
     }
+  };
+
+  // Direct reset password handler for Pauline
+  const handleResetSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanNewPass = newPassword.trim();
+
+    if (!cleanNewPass) {
+      setError('Veuillez renseigner votre nouveau mot de passe.');
+      return;
+    }
+
+    if (cleanNewPass.length < 4) {
+      setError('Le mot de passe doit comporter au moins 4 caractères.');
+      return;
+    }
+
+    if (cleanNewPass !== confirmPassword.trim()) {
+      setError('Les deux mots de passe ne correspondent pas.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    // Save to local storage as active admin password
+    localStorage.setItem('autodetail_admin_pass', cleanNewPass);
+
+    // Also attempt Firebase registration/update
+    try {
+      await createAdminAccount('contact@autodetail27.fr', cleanNewPass);
+    } catch (err) {
+      console.warn('Firebase sync on reset:', err);
+    }
+
+    soundManager.playLockSound();
+    onLogin('contact@autodetail27.fr');
+    onClose();
   };
 
   const handleGoogleLogin = async () => {
@@ -136,24 +181,6 @@ export const AdminUnlockModal: React.FC<AdminUnlockModalProps> = ({
           'Connexion Google non disponible dans ce navigateur. Utilisez votre email contact@autodetail27.fr et votre mot de passe.'
         );
       }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResetPassword = async () => {
-    const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail) {
-      setError('Veuillez renseigner votre adresse email contact@autodetail27.fr.');
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      await resetAdminPassword(cleanEmail);
-      setInfoMessage(`Un lien de réinitialisation a été envoyé à ${cleanEmail}.`);
-    } catch (err: any) {
-      setInfoMessage('Pour réinitialiser votre mot de passe, saisissez simplement votre nouveau mot de passe puis cliquez sur Se connecter.');
     } finally {
       setLoading(false);
     }
@@ -214,7 +241,86 @@ export const AdminUnlockModal: React.FC<AdminUnlockModalProps> = ({
               Verrouiller la session
             </button>
           </div>
+        ) : isResetMode ? (
+          /* Password Reset Mode */
+          <div className="space-y-4 animate-in fade-in">
+            <div className="flex items-center justify-between pb-2 border-b border-[#232a35]">
+              <span className="text-xs font-mono text-[#3ee6d8] font-bold">
+                Définir votre nouveau mot de passe
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null);
+                  setIsResetMode(false);
+                }}
+                className="text-xs text-[#8b949e] hover:text-[#eef1f4] flex items-center gap-1 cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Retour</span>
+              </button>
+            </div>
+
+            {error && (
+              <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span className="leading-snug">{error}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleResetSubmit} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-mono text-[#8b949e] mb-1">
+                  Compte concerné :
+                </label>
+                <input
+                  type="text"
+                  disabled
+                  value="contact@autodetail27.fr"
+                  className="w-full bg-[#151a22]/60 border border-[#232a35] rounded-xl px-4 py-2.5 text-xs text-[#8b949e] font-mono select-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[#8b949e] mb-1">
+                  Nouveau mot de passe :
+                </label>
+                <input
+                  type="password"
+                  required
+                  autoFocus
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Tapez votre nouveau mot de passe"
+                  className="w-full bg-[#151a22] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-4 py-2.5 text-xs text-[#eef1f4] outline-none font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[#8b949e] mb-1">
+                  Confirmez le nouveau mot de passe :
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Répétez le mot de passe"
+                  className="w-full bg-[#151a22] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-4 py-2.5 text-xs text-[#eef1f4] outline-none font-mono"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#3ee6d8] to-[#7b61ff] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider shadow-lg shadow-[#3ee6d8]/20 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+              >
+                {loading ? 'Enregistrement...' : 'ENREGISTRER & ME CONNECTER'}
+              </button>
+            </form>
+          </div>
         ) : (
+          /* Normal Login Form */
           <div className="space-y-4">
             {error && (
               <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-start gap-2">
@@ -230,7 +336,6 @@ export const AdminUnlockModal: React.FC<AdminUnlockModalProps> = ({
               </div>
             )}
 
-            {/* Email / Password Form */}
             <form onSubmit={handleEmailSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-mono text-[#8b949e] mb-1.5">
@@ -251,8 +356,13 @@ export const AdminUnlockModal: React.FC<AdminUnlockModalProps> = ({
                   <label className="text-xs font-mono text-[#8b949e]">Mot de passe :</label>
                   <button
                     type="button"
-                    onClick={handleResetPassword}
-                    className="text-[10px] font-mono text-[#3ee6d8] hover:underline cursor-pointer"
+                    onClick={() => {
+                      setError(null);
+                      setNewPassword('');
+                      setConfirmPassword('');
+                      setIsResetMode(true);
+                    }}
+                    className="text-[11px] font-mono text-[#3ee6d8] hover:underline cursor-pointer"
                   >
                     Mot de passe oublié ?
                   </button>
