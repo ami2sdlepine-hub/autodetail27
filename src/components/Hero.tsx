@@ -108,6 +108,16 @@ export const Hero: React.FC<HeroProps> = ({
               <span>Expédié sous 48 h</span>
             </div>
           </div>
+
+          {/* Concession Volkswagen & BMW Proof Badge */}
+          <div className="mt-5 p-3.5 rounded-2xl bg-[#151a22] border border-[#232a35] hover:border-[#3ee6d8]/30 transition-colors flex items-center gap-3.5 w-full">
+            <div className="w-9 h-9 rounded-xl bg-[#3ee6d8]/10 text-[#3ee6d8] flex items-center justify-center flex-shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <p className="text-xs text-[#8b949e] leading-snug">
+              <strong className="text-[#eef1f4] font-semibold">Exigence constructeur :</strong> Des produits professionnels également adoptés et utilisés en concession par des préparateurs <span className="text-[#3ee6d8] font-bold">Volkswagen</span> et <span className="text-[#3ee6d8] font-bold">BMW</span>.
+            </p>
+          </div>
         </div>
 
         {/* Right Column: Real Bottle Visual with Rotating Conic Halo & Light Pedestal */}

@@ -22,6 +22,8 @@ import { PhotoManagerModal } from './components/PhotoManagerModal';
 import { PriceEditorModal } from './components/PriceEditorModal';
 import { BusinessSettingsModal, BusinessSettings } from './components/BusinessSettingsModal';
 import { QRCodeGuideModal } from './components/QRCodeGuideModal';
+import { PackManagerModal } from './components/PackManagerModal';
+import { DetailingPack, INITIAL_PACKS } from './data/packs';
 import { LuxuryIntro } from './components/LuxuryIntro';
 import { CarrierType } from './utils/shippingCalculator';
 import { soundManager } from './utils/soundEffects';
@@ -174,12 +176,40 @@ export default function App() {
   const [isPriceModalOpen, setIsPriceModalOpen] = useState<boolean>(false);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState<boolean>(false);
   const [isCatalogModalOpen, setIsCatalogModalOpen] = useState<boolean>(false);
+  const [isPackManagerOpen, setIsPackManagerOpen] = useState<boolean>(false);
   const [legalModalType, setLegalModalType] = useState<LegalModalType>(null);
   const [qrModalProduct, setQrModalProduct] = useState<Product | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [cartPopping, setCartPopping] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [flyingBottle, setFlyingBottle] = useState<{ image: string; rect: DOMRect } | null>(null);
+
+  // Section visibility states (configurable by admin)
+  const [showBeforeAfter, setShowBeforeAfter] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('autodetail_show_before_after') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  const [showPacksSection, setShowPacksSection] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('autodetail_show_packs_section') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  // Packs state (fully customizable products, prices, discounts)
+  const [packs, setPacks] = useState<DetailingPack[]>(() => {
+    try {
+      const saved = localStorage.getItem('autodetail_packs');
+      return saved ? JSON.parse(saved) : INITIAL_PACKS;
+    } catch {
+      return INITIAL_PACKS;
+    }
+  });
 
   // All products base with overrides applied
   const allRawProducts = [...CATALOG, ...extraProducts].map((p) => {
@@ -428,6 +458,30 @@ export default function App() {
     showToast('Tarifs et paramètres de livraison enregistrés !');
   };
 
+  const handleToggleBeforeAfter = (visible: boolean) => {
+    setShowBeforeAfter(visible);
+    try {
+      localStorage.setItem('autodetail_show_before_after', String(visible));
+    } catch {}
+    showToast(visible ? 'Section "Avant / Après" affichée' : 'Section "Avant / Après" masquée aux clients');
+  };
+
+  const handleTogglePacksSection = (visible: boolean) => {
+    setShowPacksSection(visible);
+    try {
+      localStorage.setItem('autodetail_show_packs_section', String(visible));
+    } catch {}
+    showToast(visible ? 'Section "Packs & Rituels" affichée' : 'Section "Packs & Rituels" masquée aux clients');
+  };
+
+  const handleSavePacks = (newPacks: DetailingPack[]) => {
+    setPacks(newPacks);
+    try {
+      localStorage.setItem('autodetail_packs', JSON.stringify(newPacks));
+    } catch {}
+    showToast('Packs et compositions mis à jour avec succès !');
+  };
+
   const handleAddToCart = (product: Product, event?: React.MouseEvent) => {
     soundManager.playPschitt();
     if (event?.currentTarget) {
@@ -540,6 +594,7 @@ export default function App() {
         onOpenPrices={() => setIsPriceModalOpen(true)}
         onOpenPhotos={() => setIsPhotoModalOpen(true)}
         onOpenCatalog={() => setIsCatalogModalOpen(true)}
+        onOpenPackManager={() => setIsPackManagerOpen(true)}
         onOpenBusinessSettings={() => setIsBusinessSettingsOpen(true)}
         onReplayIntro={() => setShowIntro(true)}
         cartPopping={cartPopping}
@@ -566,13 +621,13 @@ export default function App() {
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#151a22] border border-[#232a35] text-xs font-semibold text-[#3ee6d8] uppercase tracking-wider mb-3">
                 <Sparkles className="w-3.5 h-3.5" />
-                Flacons professionnels haute efficacité
+                Qualité Concessionnaire • Utilisé chez Volkswagen & BMW
               </div>
               <h2 className="text-3xl sm:text-5xl font-plate text-[#eef1f4]">
                 La gamme <span className="nacre-text">Bulbee</span>
               </h2>
               <p className="mt-2 text-xs sm:text-sm text-[#8b949e] max-w-lg">
-                Des formulations professionnelles pour chaque étape du detailing. Cliquez sur un flacon pour voir les conseils et caractéristiques complètes.
+                Des formulations professionnelles également adoptées et utilisées au quotidien en concession par des préparateurs Volkswagen et BMW.
               </p>
             </div>
 
@@ -637,8 +692,16 @@ export default function App() {
           </div>
         </section>
 
-        {/* 4. Rituels de soin recommandés */}
-        <DetailingRoutines onAddMultipleToCart={handleAddMultipleToCart} />
+        {/* 4. Rituels de soin recommandés (Packs & Duos) */}
+        {(showPacksSection || isAdmin) && (
+          <DetailingRoutines
+            packs={packs}
+            allProducts={allRawProducts}
+            onAddMultipleToCart={handleAddMultipleToCart}
+            isAdmin={isAdmin}
+            onOpenPackManager={() => setIsPackManagerOpen(true)}
+          />
+        )}
 
         {/* 5. Trilogie Polissage Cut Correct Wax */}
         <PolishingTrilogy
@@ -647,7 +710,11 @@ export default function App() {
         />
 
         {/* 6. Comparateur Avant / Après interactif */}
-        <BeforeAfterComparator />
+        <BeforeAfterComparator
+          isVisible={showBeforeAfter}
+          isAdmin={isAdmin}
+          onToggleVisible={handleToggleBeforeAfter}
+        />
 
         {/* 7. La Sacoche Bulbee Showcase (Kit complet & Sacoche nue) */}
         <SacocheShowcase
@@ -753,6 +820,19 @@ export default function App() {
         onUpdateProduct={handleUpdateProduct}
         onDeleteProduct={handleDeleteProduct}
         onResetCatalog={handleResetCatalog}
+      />
+
+      {/* Pack & Sections Manager Modal */}
+      <PackManagerModal
+        isOpen={isPackManagerOpen}
+        onClose={() => setIsPackManagerOpen(false)}
+        packs={packs}
+        allProducts={allRawProducts}
+        onSavePacks={handleSavePacks}
+        showPacksSection={showPacksSection}
+        onTogglePacksSection={handleTogglePacksSection}
+        showBeforeAfterSection={showBeforeAfter}
+        onToggleBeforeAfterSection={handleToggleBeforeAfter}
       />
 
       {/* Admin PIN & Firebase Unlock Modal */}

@@ -4,6 +4,7 @@ import { Sparkles, ShieldCheck, Droplets, CheckCircle, Flame, Star } from 'lucid
 export const InfiniteTicker: React.FC = () => {
   const items = [
     { text: 'FORMULATIONS HAUTE CONCENTRATION', icon: Flame },
+    { text: 'ÉGALEMENT UTILISÉ EN CONCESSIONS VOLKSWAGEN & BMW', icon: ShieldCheck },
     { text: 'EFFET DÉPERLANT SIO2 IMMÉDIAT', icon: Droplets },
     { text: 'EXPÉDITION SOIGNÉE 48H PARTOUT EN FRANCE', icon: ShieldCheck },
     { text: 'FINI SATINÉ NON GRAS & SANS REFLET', icon: Sparkles },

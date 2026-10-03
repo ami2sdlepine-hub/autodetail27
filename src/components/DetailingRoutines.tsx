@@ -1,62 +1,84 @@
 import React from 'react';
-import { CATALOG, Product } from '../data/products';
-import { Sparkles, ArrowRight, ShieldCheck, Plus } from 'lucide-react';
+import { Product } from '../data/products';
+import { DetailingPack } from '../data/packs';
+import { Sparkles, ShieldCheck, Plus, Settings, EyeOff } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
 
 interface DetailingRoutinesProps {
+  packs: DetailingPack[];
+  allProducts: Product[];
   onAddMultipleToCart: (products: Product[]) => void;
+  isAdmin?: boolean;
+  onOpenPackManager?: () => void;
 }
 
 export const DetailingRoutines: React.FC<DetailingRoutinesProps> = ({
+  packs,
+  allProducts,
   onAddMultipleToCart,
+  isAdmin,
+  onOpenPackManager,
 }) => {
-  const routines = [
-    {
-      id: 'routine-int',
-      title: 'Pack Habitacle Parfait',
-      desc: 'Dégraissage en profondeur des plastiques et tissus + protection satinée anti-UV + parfum vivifiant.',
-      productIds: ['MC500', 'EP500', 'SF150'],
-      tag: 'Intérieur Showroom',
-      color: '#3ee6d8',
-    },
-    {
-      id: 'routine-ext',
-      title: 'Pack Lavage & Finition Miroir',
-      desc: 'Prélavage décontaminant jantes + shampoing céramique SiO2 + quick detailer lustrant express.',
-      productIds: ['WR500', 'HW500', 'IS500'],
-      tag: 'Extérieur & Carrosserie',
-      color: '#7b61ff',
-    },
-  ];
+  // Filter visible packs for visitors, but show all with indicator for admin
+  const visiblePacks = isAdmin ? packs : packs.filter((p) => !p.isHidden);
+
+  if (visiblePacks.length === 0 && !isAdmin) return null;
 
   return (
-    <section className="py-16 px-4 sm:px-6 max-w-7xl mx-auto">
-      <div className="text-center mb-12">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#151a22] border border-[#232a35] text-xs font-semibold text-[#3ee6d8] uppercase tracking-wider mb-3">
-          <Sparkles className="w-3.5 h-3.5" />
-          Rituels de soin recommandés
+    <section id="packs" className="py-16 px-4 sm:px-6 max-w-7xl mx-auto">
+      <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+        <div>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#151a22] border border-[#232a35] text-xs font-semibold text-[#3ee6d8] uppercase tracking-wider mb-3">
+            <Sparkles className="w-3.5 h-3.5" />
+            Rituels de soin recommandés
+          </div>
+          <h2 className="text-3xl sm:text-5xl font-plate text-[#eef1f4]">
+            Composez votre <span className="nacre-text">Routine Detailing</span>
+          </h2>
+          <p className="mt-3 text-sm sm:text-base text-[#8b949e] max-w-xl">
+            Des associations calibrées de flacons complémentaires pour un résultat professionnel sans compromis.
+          </p>
         </div>
-        <h2 className="text-3xl sm:text-5xl font-plate text-[#eef1f4]">
-          Composez votre <span className="nacre-text">Routine Detailing</span>
-        </h2>
-        <p className="mt-3 text-sm sm:text-base text-[#8b949e] max-w-xl mx-auto">
-          Des associations calibrées de flacons complémentaires pour un résultat professionnel sans compromis.
-        </p>
+
+        {isAdmin && onOpenPackManager && (
+          <button
+            onClick={() => {
+              soundManager.playClick();
+              onOpenPackManager();
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#152e28] border border-[#3ddc97]/50 hover:border-[#3ddc97] text-xs font-plate uppercase tracking-wider text-[#3ddc97] hover:bg-[#3ddc97]/10 transition-all shadow-sm cursor-pointer"
+          >
+            <Settings className="w-4 h-4" />
+            <span>Gérer & modifier les Packs</span>
+          </button>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {routines.map((routine) => {
-          const prods = routine.productIds
-            .map((id) => CATALOG.find((p) => p.id === id))
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+        {visiblePacks.map((routine) => {
+          const prods = (routine.productIds || [])
+            .map((id) => allProducts.find((p) => p.id === id))
             .filter((p): p is Product => Boolean(p));
 
-          const totalPrice = prods.reduce((acc, curr) => acc + curr.price, 0);
+          const rawTotal = prods.reduce((acc, curr) => acc + curr.price, 0);
+          const discount = routine.discountPercent ?? 10;
+          const computedPrice = rawTotal * (1 - discount / 100);
+          const finalPrice = routine.customPrice ?? computedPrice;
 
           return (
             <div
               key={routine.id}
-              className="conic-border-card p-6 sm:p-8 flex flex-col justify-between"
+              className={`conic-border-card p-6 sm:p-8 flex flex-col justify-between relative ${
+                routine.isHidden ? 'border-red-500/40 opacity-75' : ''
+              }`}
             >
+              {routine.isHidden && (
+                <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-[10px] font-mono flex items-center gap-1">
+                  <EyeOff className="w-3 h-3" />
+                  <span>Masqué aux clients</span>
+                </div>
+              )}
+
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-xs font-mono uppercase tracking-widest text-[#3ee6d8] font-bold">
@@ -64,7 +86,7 @@ export const DetailingRoutines: React.FC<DetailingRoutinesProps> = ({
                   </span>
                   <span className="text-xs font-mono text-[#3ddc97] font-semibold flex items-center gap-1">
                     <ShieldCheck className="w-3.5 h-3.5" />
-                    3 flacons complémentaires
+                    {prods.length} flacons inclus
                   </span>
                 </div>
 
@@ -75,54 +97,65 @@ export const DetailingRoutines: React.FC<DetailingRoutinesProps> = ({
                   {routine.desc}
                 </p>
 
-                {/* 3 mini product cards */}
-                <div className="grid grid-cols-3 gap-3 mb-6">
-                  {prods.map((p) => (
+                {/* Product miniatures included in routine */}
+                <div className="space-y-3 mb-8">
+                  {prods.map((prod) => (
                     <div
-                      key={p.id}
-                      className="p-3 rounded-2xl bg-[#151a22] border border-[#232a35] flex flex-col items-center text-center"
+                      key={prod.id}
+                      className="p-3 rounded-2xl bg-[#10141b] border border-[#232a35] flex items-center gap-3"
                     >
-                      <div className="w-16 h-16 rounded-xl img-visu p-2 flex items-center justify-center border border-white/20 mb-2">
+                      <div className="w-12 h-12 rounded-xl bg-black/40 p-1 flex items-center justify-center flex-shrink-0">
                         <img
-                          src={p.image}
-                          alt={p.name}
+                          src={prod.image}
+                          alt={prod.name}
                           className="max-h-full max-w-full object-contain filter drop-shadow"
                         />
                       </div>
-                      <span className="font-plate text-xs text-[#eef1f4] truncate w-full">
-                        {p.name}
-                      </span>
-                      <span className="text-[10px] font-mono text-[#8b949e]">
-                        {p.volume}
-                      </span>
-                      <span className="text-[11px] font-mono font-bold text-[#3ee6d8] mt-1">
-                        {p.price.toFixed(2).replace('.', ',')} €
-                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono text-[#3ee6d8] font-bold">
+                            #{prod.refNumber}
+                          </span>
+                          <span className="text-xs font-plate text-[#eef1f4] truncate">
+                            {prod.name}
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-[#8b949e] block font-mono">
+                          {prod.volume} • {prod.price.toFixed(2).replace('.', ',')} €
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Bottom Total & Add Pack Button */}
-              <div className="pt-4 border-t border-[#232a35] flex items-center justify-between gap-4">
+              {/* Price & Add to Cart */}
+              <div className="pt-6 border-t border-[#232a35] flex items-center justify-between gap-4">
                 <div>
-                  <div className="text-xs text-[#8b949e] font-mono">Total du pack :</div>
-                  <div className="font-plate text-2xl sm:text-3xl text-[#eef1f4]">
-                    {totalPrice.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
-                    <span className="text-xs font-mono text-[#8b949e] ml-1">TTC</span>
+                  <span className="text-[10px] font-mono text-[#8b949e] uppercase block">
+                    {routine.badge || 'Offre Pack'}
+                  </span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-plate text-2xl sm:text-3xl text-[#3ee6d8]">
+                      {finalPrice.toFixed(2).replace('.', ',')} €
+                    </span>
+                    {rawTotal > finalPrice && (
+                      <span className="text-xs font-mono line-through text-[#8b949e]">
+                        {rawTotal.toFixed(2).replace('.', ',')} €
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 <button
-                  type="button"
                   onClick={() => {
-                    soundManager.playPschitt();
+                    soundManager.playCashRegister();
                     onAddMultipleToCart(prods);
                   }}
-                  className="px-5 py-3 rounded-xl bg-gradient-to-r from-[#3ee6d8] to-[#7b61ff] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider shadow-lg shadow-[#3ee6d8]/20 hover:brightness-110 active:scale-95 transition-all flex items-center gap-2"
+                  className="px-5 py-3 rounded-xl bg-gradient-to-r from-[#3ee6d8] to-[#7b61ff] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider shadow-lg shadow-[#3ee6d8]/20 hover:brightness-110 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
                 >
                   <Plus className="w-4 h-4 stroke-[3]" />
-                  <span>Ajouter le pack ({totalPrice.toFixed(2).replace('.', ',')} €)</span>
+                  <span>Ajouter le Pack</span>
                 </button>
               </div>
             </div>

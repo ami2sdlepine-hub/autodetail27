@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingCart, ShieldCheck, MapPin, Tag, Camera, Package, Lock, Unlock, Play, Building2 } from 'lucide-react';
+import { ShoppingCart, ShieldCheck, MapPin, Tag, Camera, Package, Lock, Unlock, Play, Building2, Layers } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
 
 interface HeaderProps {
@@ -10,6 +10,7 @@ interface HeaderProps {
   onOpenPrices: () => void;
   onOpenPhotos: () => void;
   onOpenCatalog: () => void;
+  onOpenPackManager?: () => void;
   onOpenBusinessSettings: () => void;
   onReplayIntro: () => void;
   cartPopping: boolean;
@@ -23,6 +24,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenPrices,
   onOpenPhotos,
   onOpenCatalog,
+  onOpenPackManager,
   onOpenBusinessSettings,
   onReplayIntro,
   cartPopping,
@@ -104,6 +106,16 @@ export const Header: React.FC<HeaderProps> = ({
                   <Tag className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Prix & Port</span>
                 </button>
+                {onOpenPackManager && (
+                  <button
+                    onClick={onOpenPackManager}
+                    title="Gestionnaire des Packs, Duos et Masquage Sections"
+                    className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-[#151a22] border border-[#7b61ff]/50 hover:border-[#7b61ff] text-xs text-[#b485ff] hover:text-white flex items-center gap-1.5 transition-colors"
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Packs & Sections</span>
+                  </button>
+                )}
                 <button
                   onClick={onOpenBusinessSettings}
                   title="Informations Entreprise, SIRET & Lien SumUp"
