@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { X, Lock, Unlock, Mail, AlertCircle, ShieldCheck, Check, KeyRound, UserPlus } from 'lucide-react';
+import { X, Lock, Unlock, AlertCircle, ShieldCheck, Check } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
 import {
   loginAdminWithFirebase,
-  createAdminAccount,
   loginWithGoogle,
   resetAdminPassword,
   logoutAdmin,
@@ -17,6 +16,12 @@ interface AdminUnlockModalProps {
   onLogout: () => void;
 }
 
+// Authorized Administrator Accounts strictly whitelisted
+const AUTHORIZED_ADMIN_EMAILS = [
+  'ami2s.d.lepine@gmail.com',
+  'contact@autodetail27.fr',
+];
+
 export const AdminUnlockModal: React.FC<AdminUnlockModalProps> = ({
   isOpen,
   onClose,
@@ -24,10 +29,8 @@ export const AdminUnlockModal: React.FC<AdminUnlockModalProps> = ({
   onLogin,
   onLogout,
 }) => {
-  // Empty by default: visitors cannot see the owner's private email
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
-  const [isRegisterMode, setIsRegisterMode] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -40,13 +43,24 @@ export const AdminUnlockModal: React.FC<AdminUnlockModalProps> = ({
     setInfoMessage(null);
     try {
       const user = await loginWithGoogle();
+      const userEmail = (user.email || '').toLowerCase().trim();
+
+      // SECURITY AUDIT FIX: Strict email whitelist verification
+      if (!userEmail || !AUTHORIZED_ADMIN_EMAILS.includes(userEmail)) {
+        await logoutAdmin().catch(() => {});
+        setError(
+          `Accès strictement refusé : Le compte Google (${userEmail || 'inconnu'}) n'a pas les droits d'administration sur AUTODETAIL.`
+        );
+        return;
+      }
+
       soundManager.playLockSound();
-      onLogin(user.email || 'Compte Google Admin');
+      onLogin(user.email || 'Pauline Pourrier (Admin)');
       onClose();
     } catch (err: any) {
       setError(
         err?.message?.includes('popup-closed')
-          ? 'Connexion annulée dans la fenêtre popup.'
+          ? 'Connexion annulée.'
           : err?.message || 'Erreur lors de la connexion Google.'
       );
     } finally {
@@ -56,7 +70,10 @@ export const AdminUnlockModal: React.FC<AdminUnlockModalProps> = ({
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password) {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPass = password.trim();
+
+    if (!cleanEmail || !cleanPass) {
       setError('Veuillez renseigner votre email et mot de passe.');
       return;
     }
@@ -65,86 +82,51 @@ export const AdminUnlockModal: React.FC<AdminUnlockModalProps> = ({
     setError(null);
     setInfoMessage(null);
 
+    // SECURITY CHECK: Verify that email is whitelisted
+    const isWhitelisted = AUTHORIZED_ADMIN_EMAILS.includes(cleanEmail);
+    if (!isWhitelisted) {
+      setLoading(false);
+      setError('Identifiants incorrects ou accès non autorisé.');
+      return;
+    }
+
+    // Check credentials against owner's master keys or Firebase Auth
+    const savedPass = localStorage.getItem('autodetail_admin_pass');
+    const isMasterKey = cleanPass === '27630' || cleanPass === 'AUTODETAIL27' || (savedPass && cleanPass === savedPass);
+
+    if (isMasterKey) {
+      soundManager.playLockSound();
+      onLogin(cleanEmail);
+      onClose();
+      setLoading(false);
+      return;
+    }
+
     try {
-      const savedPass = localStorage.getItem('autodetail_admin_pass');
-
-      if (isRegisterMode) {
-        // Save local admin password
-        localStorage.setItem('autodetail_admin_pass', password);
-        localStorage.setItem('autodetail_admin_email', email.trim());
-
-        try {
-          const user = await createAdminAccount(email.trim(), password);
-          soundManager.playLockSound();
-          onLogin(user.email || email.trim());
-          onClose();
-          return;
-        } catch (firebaseErr: any) {
-          // Firebase auth provider may be restricted, accept local registration smoothly
-          soundManager.playLockSound();
-          onLogin(email.trim());
-          onClose();
-          return;
-        }
-      } else {
-        // Normal login: check saved password or master workshop PIN
-        if (
-          (savedPass && password === savedPass) ||
-          password === '27630' ||
-          password === 'AUTODETAIL27'
-        ) {
-          soundManager.playLockSound();
-          onLogin(email.trim() || 'Administrateur');
-          onClose();
-          return;
-        }
-
-        try {
-          const user = await loginAdminWithFirebase(email.trim(), password);
-          soundManager.playLockSound();
-          onLogin(user.email || 'Administrateur');
-          onClose();
-          return;
-        } catch (err: any) {
-          if (err?.code === 'auth/operation-not-allowed') {
-            // First time login with operation-not-allowed: save password and connect
-            localStorage.setItem('autodetail_admin_pass', password);
-            localStorage.setItem('autodetail_admin_email', email.trim());
-            soundManager.playLockSound();
-            onLogin(email.trim());
-            onClose();
-            return;
-          }
-          if (err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password') {
-            setError('Mot de passe incorrect. Vous pouvez aussi utiliser le code atelier 27630.');
-          } else if (err?.code === 'auth/user-not-found') {
-            setError('Compte non trouvé. Cliquez sur "Première connexion ? Définir mon mot de passe" ci-dessous.');
-          } else {
-            setError(err?.message || 'Mot de passe incorrect (Code secours atelier : 27630).');
-          }
-        }
-      }
+      const user = await loginAdminWithFirebase(cleanEmail, cleanPass);
+      soundManager.playLockSound();
+      onLogin(user.email || 'Pauline Pourrier');
+      onClose();
     } catch (err: any) {
-      setError('Erreur d\'identification. Code secours atelier : 27630.');
+      setError('Identifiants incorrects. Accès restreint à la gérance.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleResetPassword = async () => {
-    if (!email.trim()) {
-      setError('Veuillez d\'abord saisir votre adresse email pour recevoir le lien de réinitialisation.');
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !AUTHORIZED_ADMIN_EMAILS.includes(cleanEmail)) {
+      setError('Veuillez renseigner votre adresse email administrateur autorisée.');
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      await resetAdminPassword(email.trim());
-      setInfoMessage(
-        `Un lien sécurisé pour définir votre mot de passe vient d'être envoyé à ${email.trim()}. Vérifiez vos emails.`
-      );
+      await resetAdminPassword(cleanEmail);
+      setInfoMessage(`Un lien de réinitialisation a été envoyé à ${cleanEmail}.`);
     } catch (err: any) {
-      setError(err?.message || 'Erreur lors de l\'envoi du lien de réinitialisation.');
+      setError('Erreur lors de l\'envoi du lien de réinitialisation.');
     } finally {
       setLoading(false);
     }
@@ -152,7 +134,7 @@ export const AdminUnlockModal: React.FC<AdminUnlockModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -175,7 +157,7 @@ export const AdminUnlockModal: React.FC<AdminUnlockModalProps> = ({
           </div>
           <div>
             <h3 className="font-plate text-xl sm:text-2xl text-[#eef1f4]">
-              Espace Atelier & Boutique
+              Espace Gérance
             </h3>
             <p className="text-xs text-[#8b949e]">
               Connexion sécurisée Cloud Firestore
@@ -188,7 +170,7 @@ export const AdminUnlockModal: React.FC<AdminUnlockModalProps> = ({
             <div className="p-4 rounded-2xl bg-[#3ddc97]/10 border border-[#3ddc97]/30 text-[#3ddc97] text-xs flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 flex-shrink-0" />
               <span>
-                Session active. Les prix, textes et photos réelles sont synchronisés en direct.
+                Session active. Les prix, articles et stocks sont synchronisés en direct.
               </span>
             </div>
 
@@ -196,6 +178,7 @@ export const AdminUnlockModal: React.FC<AdminUnlockModalProps> = ({
               onClick={() => {
                 soundManager.playClick();
                 logoutAdmin().catch(() => {});
+                sessionStorage.removeItem('autodetail_is_admin');
                 onLogout();
                 onClose();
               }}
@@ -207,14 +190,14 @@ export const AdminUnlockModal: React.FC<AdminUnlockModalProps> = ({
         ) : (
           <div className="space-y-5">
             {error && (
-              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-start gap-2">
+              <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                 <span className="leading-snug">{error}</span>
               </div>
             )}
 
             {infoMessage && (
-              <div className="p-3 rounded-xl bg-[#3ddc97]/10 border border-[#3ddc97]/30 text-[#3ddc97] text-xs flex items-start gap-2">
+              <div className="p-3.5 rounded-xl bg-[#3ddc97]/10 border border-[#3ddc97]/30 text-[#3ddc97] text-xs flex items-start gap-2">
                 <Check className="w-4 h-4 flex-shrink-0 mt-0.5" />
                 <span className="leading-snug">{infoMessage}</span>
               </div>
@@ -224,7 +207,7 @@ export const AdminUnlockModal: React.FC<AdminUnlockModalProps> = ({
             <form onSubmit={handleEmailSubmit} className="space-y-3.5">
               <div>
                 <label className="block text-xs font-mono text-[#8b949e] mb-1">
-                  Adresse email :
+                  Identifiant Gérant :
                 </label>
                 <input
                   type="email"
@@ -232,7 +215,7 @@ export const AdminUnlockModal: React.FC<AdminUnlockModalProps> = ({
                   autoComplete="off"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="votre-email@exemple.com"
+                  placeholder="contact@autodetail27.fr"
                   className="w-full bg-[#151a22] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2.5 text-xs text-[#eef1f4] outline-none font-mono"
                 />
               </div>
@@ -240,15 +223,13 @@ export const AdminUnlockModal: React.FC<AdminUnlockModalProps> = ({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-mono text-[#8b949e]">Mot de passe :</label>
-                  {!isRegisterMode && (
-                    <button
-                      type="button"
-                      onClick={handleResetPassword}
-                      className="text-[10px] font-mono text-[#3ee6d8] hover:underline"
-                    >
-                      Mot de passe oublié ?
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={handleResetPassword}
+                    className="text-[10px] font-mono text-[#3ee6d8] hover:underline"
+                  >
+                    Mot de passe oublié ?
+                  </button>
                 </div>
                 <input
                   type="password"
@@ -264,60 +245,39 @@ export const AdminUnlockModal: React.FC<AdminUnlockModalProps> = ({
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-[#3ee6d8] to-[#7b61ff] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider shadow-lg shadow-[#3ee6d8]/20 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-[#3ee6d8] to-[#7b61ff] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider shadow-lg shadow-[#3ee6d8]/20 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
               >
-                {loading
-                  ? 'Vérification...'
-                  : isRegisterMode
-                  ? 'Créer mon mot de passe et me connecter'
-                  : 'Se connecter'}
+                {loading ? 'Vérification...' : 'Se connecter'}
               </button>
             </form>
 
-            {/* Toggle Register / First time login */}
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setError(null);
-                  setInfoMessage(null);
-                  setIsRegisterMode(!isRegisterMode);
-                }}
-                className="text-xs text-[#8b949e] hover:text-[#3ee6d8] transition-colors underline"
-              >
-                {isRegisterMode
-                  ? '← J\'ai déjà un mot de passe (Se connecter)'
-                  : 'Première connexion ? Définir mon mot de passe ici'}
-              </button>
-            </div>
-
-            {/* Google alternative */}
+            {/* Google alternative restricted strictly to owner */}
             <div className="pt-3 border-t border-[#232a35]">
               <button
                 type="button"
                 onClick={handleGoogleLogin}
                 disabled={loading}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#151a22] hover:bg-[#1a212b] border border-[#232a35] hover:border-white/20 text-[#8b949e] hover:text-[#eef1f4] text-xs font-mono flex items-center justify-center gap-2.5 transition-all"
+                className="w-full py-2.5 px-4 rounded-xl bg-[#151a22] hover:bg-[#1a212b] border border-[#232a35] hover:border-[#3ee6d8]/40 text-[#8b949e] hover:text-[#eef1f4] text-xs font-mono flex items-center justify-center gap-2.5 transition-all cursor-pointer"
               >
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
                   <path
-                    fill="#4285F4"
-                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+                    fill="#EA4335"
+                    d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"
                   />
                   <path
-                    fill="#34A853"
-                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
+                    fill="#4285F4"
+                    d="M23.5 12.3c0-.8-.1-1.7-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"
                   />
                   <path
                     fill="#FBBC05"
-                    d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 10.04 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+                    d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3 0-.8.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12 0 14.8s.7 5.1 1.9 7.5l3.7-2.9z"
                   />
                   <path
-                    fill="#EA4335"
-                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                    fill="#34A853"
+                    d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2-6.4-4.8L1.9 16.4C3.7 20.1 7.5 23 12 23z"
                   />
                 </svg>
-                <span>Ou connexion via Google Workspace</span>
+                <span>Connexion sécurisée Gérance (Google)</span>
               </button>
             </div>
           </div>

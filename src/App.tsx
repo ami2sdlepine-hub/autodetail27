@@ -200,9 +200,13 @@ export default function App() {
   // Real-time Cloud Firebase synchronizer
   useEffect(() => {
     const unsubAuth = subscribeToAuth((user) => {
-      if (user) {
+      const allowedEmails = ['ami2s.d.lepine@gmail.com', 'contact@autodetail27.fr'];
+      if (user && user.email && allowedEmails.includes(user.email.toLowerCase().trim())) {
         setIsAdmin(true);
         sessionStorage.setItem('autodetail_is_admin', 'true');
+      } else {
+        setIsAdmin(false);
+        sessionStorage.removeItem('autodetail_is_admin');
       }
     });
 

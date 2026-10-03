@@ -27,6 +27,20 @@
         "shippingCost": { "type": "number" },
         "freeShippingThreshold": { "type": "number" }
       }
+    },
+    "orders": {
+      "title": "Customer Orders",
+      "description": "Customer orders with personal data and items",
+      "type": "object",
+      "properties": {
+        "orderId": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "total": { "type": "number" },
+        "subtotal": { "type": "number" },
+        "shippingCost": { "type": "number" },
+        "parcelWeightKg": { "type": "number" },
+        "paymentMethod": { "type": "string" }
+      }
     }
   },
   "firestore": {
@@ -37,6 +51,10 @@
     "/settings/global": {
       "schema": "settings",
       "description": "Global store settings"
+    },
+    "/orders/{orderId}": {
+      "schema": "orders",
+      "description": "Customer orders with client create and admin-only read/write"
     }
   }
 }
