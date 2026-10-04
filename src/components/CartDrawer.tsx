@@ -185,7 +185,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       key={product.id}
                       className="p-3.5 rounded-2xl bg-[#151a22] border border-[#232a35] flex items-center justify-between gap-3"
                     >
-                      <div className="w-14 h-14 rounded-xl img-visu p-1.5 flex items-center justify-center border border-white/20 flex-shrink-0">
+                      <div className="w-14 h-14 rounded-xl img-visu p-1.5 flex items-center justify-center border border-[#232a35] flex-shrink-0">
                         <img
                           src={product.image}
                           alt={product.name}

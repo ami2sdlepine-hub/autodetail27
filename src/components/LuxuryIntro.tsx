@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { ArrowRight, X, ShieldCheck, Droplets, Sparkles, CheckCircle2 } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
 import carShowroomImg from '../assets/images/car_after_clean_1790974060887.jpg';
-import hydroWashImg from '../assets/images/bulbee_hydro_wash_real_1790974827509.jpg';
-import multiWashImg from '../assets/images/bulbee_multi_wash_real_1790974750104.jpg';
+import hydroWashImg from '../assets/images/bulbee_hydro_wash_black_1791140587874.jpg';
+import multiCleanImg from '../assets/images/bulbee_multi_clean_black_1791140521418.jpg';
 
 interface LuxuryIntroProps {
   onComplete: () => void;
@@ -121,7 +121,7 @@ export const LuxuryIntro: React.FC<LuxuryIntroProps> = ({ onComplete }) => {
           style={{ animation: 'float-gentle 6s ease-in-out infinite', animationDelay: '1.5s' }}
         >
           <img
-            src={multiWashImg}
+            src={multiCleanImg}
             alt="Multi Clean Bulbee"
             className="w-full h-auto object-contain drop-shadow-[0_15px_20px_rgba(0,0,0,0.8)]"
           />

@@ -41,7 +41,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 items-center">
           {/* Left: Product Image on Pedestal */}
           <div className="sm:col-span-5 flex flex-col items-center">
-            <div className="w-full aspect-square rounded-2xl p-4 img-visu flex items-center justify-center border border-white/20 shadow-xl relative overflow-hidden">
+            <div className="w-full aspect-square rounded-2xl p-4 img-visu flex items-center justify-center border border-[#232a35] shadow-xl relative overflow-hidden">
               <img
                 src={product.image}
                 alt={product.name}

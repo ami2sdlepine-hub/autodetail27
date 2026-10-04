@@ -67,9 +67,9 @@ export const PhotoManagerModal: React.FC<PhotoManagerModalProps> = ({
     if (lower.includes('hydrowash')) return 'HW500';
     if (lower.includes('bugcleaner')) return 'BC500';
     if (lower.includes('instantshine')) return 'IS500';
-    if (lower.includes('cut')) return 'CUT500';
-    if (lower.includes('correct')) return 'CORRECT500';
-    if (lower.includes('wax')) return 'WAX500';
+    if (lower.includes('finition') || lower.includes('wax')) return 'WAX500';
+    if (lower.includes('hologramme') || lower.includes('correct')) return 'CORRECT500';
+    if (lower.includes('abrasif') || lower.includes('cut')) return 'CUT500';
     if (lower.includes('applicateur') || lower.includes('tampon') || lower.includes('art5306') || lower.includes('pneu')) return 'ART-5306';
 
     // Search by product name in dynamic productList
@@ -235,7 +235,7 @@ export const PhotoManagerModal: React.FC<PhotoManagerModalProps> = ({
                   key={product.id}
                   className="p-3 rounded-xl bg-[#151a22] border border-[#232a35] flex items-center justify-between gap-3"
                 >
-                  <div className="w-12 h-12 rounded-lg img-visu p-1 border border-white/20 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                  <div className="w-12 h-12 rounded-lg img-visu p-1 border border-[#232a35] flex-shrink-0 flex items-center justify-center overflow-hidden">
                     <img
                       src={activeImage}
                       alt={product.name}

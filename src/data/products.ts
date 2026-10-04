@@ -1,21 +1,21 @@
-import blueGlassImg from '../assets/images/bulbee_blue_glass_real_1790974766071.jpg';
-import easyPlastImg from '../assets/images/bulbee_easy_plast_real_1790974782615.jpg';
-import hydroWashImg from '../assets/images/bulbee_hydro_wash_real_1790974827509.jpg';
-import multiCleanImg from '../assets/images/bulbee_multi_clean_real_1791139754294.jpg';
-import sacocheImg from '../assets/images/bulbee_sacoche_real_1790974851655.jpg';
-import sacocheNueImg from '../assets/images/bulbee_sacoche_nue_1791016827651.jpg';
-import springFreshImg from '../assets/images/bulbee_spring_fresh_93_1791139765774.jpg';
-import mintFreshImg from '../assets/images/bulbee_mint_fresh_1791102869845.jpg';
-import ginFreshImg from '../assets/images/bulbee_gin_fresh_1791102885611.jpg';
-import bubbleFreshImg from '../assets/images/bulbee_bubble_fresh_1791102850461.jpg';
-import tireShineImg from '../assets/images/bulbee_tire_shine_real_1790974796646.jpg';
-import wheelReactImg from '../assets/images/bulbee_wheel_react_real_1790974840669.jpg';
-import cutImg from '../assets/images/bulbee_cut_real_1791116517194.jpg';
-import correctImg from '../assets/images/bulbee_correct_real_1791116536517.jpg';
-import waxImg from '../assets/images/bulbee_wax_real_1791116550540.jpg';
+import blueGlassImg from '../assets/images/bulbee_blue_glass_black_1791140535133.jpg';
+import easyPlastImg from '../assets/images/bulbee_easy_plast_black_1791140553878.jpg';
+import hydroWashImg from '../assets/images/bulbee_hydro_wash_black_1791140587874.jpg';
+import multiCleanImg from '../assets/images/bulbee_multi_clean_black_1791140521418.jpg';
+import sacocheImg from '../assets/images/bulbee_sacoche_pack_black_1791140632568.jpg';
+import sacocheNueImg from '../assets/images/bulbee_sacoche_nue_black_1791140645120.jpg';
+import springFreshImg from '../assets/images/bulbee_spring_fresh_black_1791140664370.jpg';
+import mintFreshImg from '../assets/images/bulbee_mint_fresh_black_1791140679092.jpg';
+import ginFreshImg from '../assets/images/bulbee_gin_fresh_black_1791140691009.jpg';
+import bubbleFreshImg from '../assets/images/bulbee_bubble_fresh_black_1791140703941.jpg';
+import tireShineImg from '../assets/images/bulbee_tire_shine_black_1791140612072.jpg';
+import wheelReactImg from '../assets/images/bulbee_wheel_react_black_1791140573860.jpg';
+import cutImg from '../assets/images/bulbee_cut_black_1791140716058.jpg';
+import correctImg from '../assets/images/bulbee_correct_black_1791140730087.jpg';
+import waxImg from '../assets/images/bulbee_wax_black_1791140743717.jpg';
 import bugCleanerImg from '../assets/images/bulbee_bug_cleaner_1791102780899.jpg';
 import instantShineImg from '../assets/images/bulbee_instant_shine_1791102796128.jpg';
-export { default as tireApplicatorImg } from '../assets/images/tire_applicator_pad_1791139731451.jpg';
+export { default as tireApplicatorImg } from '../assets/images/applicateur_pneu_real_1791140047169.jpg';
 
 export interface Product {
   id: string;

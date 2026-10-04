@@ -1,5 +1,5 @@
 import React from 'react';
-import sacocheImg from '../assets/images/bulbee_sacoche_real_1790974851655.jpg';
+import sacocheImg from '../assets/images/bulbee_sacoche_pack_black_1791140632568.jpg';
 import { CATALOG, Product } from '../data/products';
 import { ShieldCheck, Sparkles, PackageCheck, ShoppingCart, Clock, AlertCircle } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
@@ -57,7 +57,7 @@ export const SacocheShowcase: React.FC<SacocheShowcaseProps> = ({
                 soundManager.playClick();
                 onOpenDetails(sacocheProduct);
               }}
-              className="relative w-full aspect-square max-w-md rounded-3xl p-6 img-visu flex items-center justify-center cursor-pointer group shadow-xl transition-all duration-300 hover:scale-[1.02] border border-white/20"
+              className="relative w-full aspect-square max-w-md rounded-3xl p-6 img-visu flex items-center justify-center cursor-pointer group shadow-xl transition-all duration-300 hover:scale-[1.02] border border-[#232a35] hover:border-[#3ee6d8]/50"
               role="button"
               tabIndex={0}
               aria-label="Agrandir les détails de la Sacoche Bulbee"

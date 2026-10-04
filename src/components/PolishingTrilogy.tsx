@@ -146,7 +146,7 @@ export const PolishingTrilogy: React.FC<PolishingTrilogyProps> = ({
                 </div>
 
                 <div
-                  className="relative w-full aspect-square rounded-2xl img-visu p-4 flex items-center justify-center border border-white/20 mb-4 group overflow-hidden"
+                  className="relative w-full aspect-square rounded-2xl img-visu p-4 flex items-center justify-center border border-[#232a35] mb-4 group overflow-hidden"
                 >
                   <img
                     onClick={() => onOpenDetails(prod)}

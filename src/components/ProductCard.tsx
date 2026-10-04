@@ -67,7 +67,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             soundManager.playClick();
             onOpenDetails(product);
           }}
-          className="relative w-full aspect-square rounded-2xl p-4 img-visu flex items-center justify-center cursor-pointer overflow-hidden border border-white/20 mb-4 group-hover:border-[#3ee6d8]/40 transition-colors"
+          className="relative w-full aspect-square rounded-2xl p-4 img-visu flex items-center justify-center cursor-pointer overflow-hidden border border-[#232a35] mb-4 group-hover:border-[#3ee6d8]/50 transition-colors"
           role="button"
           tabIndex={0}
           aria-label={`Voir les caractéristiques de ${product.name}`}

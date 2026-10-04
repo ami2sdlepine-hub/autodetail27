@@ -139,7 +139,7 @@ export const Hero: React.FC<HeroProps> = ({
 
             {/* Bottle Card Display with gentle floating */}
             <div
-              className="relative z-10 w-72 sm:w-80 aspect-[3/4] rounded-3xl p-6 img-visu border border-white/30 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col items-center justify-between cursor-pointer group"
+              className="relative z-10 w-72 sm:w-80 aspect-[3/4] rounded-3xl p-6 bg-[#151a22] border border-[#232a35] shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col items-center justify-between cursor-pointer group hover:border-[#3ee6d8]/50 transition-colors"
               style={{ animation: 'float-gentle 5s ease-in-out infinite' }}
               onClick={onOpenBestSeller}
               role="button"
@@ -151,7 +151,7 @@ export const Hero: React.FC<HeroProps> = ({
                 <span className="px-3 py-1 rounded-full text-[10px] font-plate tracking-wider text-black bg-gradient-to-r from-[#3ee6d8] to-[#99f6e4] shadow-md uppercase font-bold">
                   {bestSeller.badge || `Best-Seller #${bestSeller.refNumber}`}
                 </span>
-                <span className="text-xs font-mono text-slate-800 font-bold bg-white/80 px-2 py-0.5 rounded">
+                <span className="text-xs font-mono text-[#eef1f4] font-bold bg-[#10141b] border border-[#232a35] px-2.5 py-0.5 rounded-full">
                   {bestSeller.price.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € TTC
                 </span>
               </div>
@@ -181,10 +181,10 @@ export const Hero: React.FC<HeroProps> = ({
 
               {/* Bottom Card Info */}
               <div className="w-full text-center">
-                <div className="text-slate-900 font-plate text-lg leading-tight">
+                <div className="text-[#eef1f4] font-plate text-lg leading-tight">
                   {bestSeller.name}
                 </div>
-                <div className="text-slate-600 text-xs font-mono mt-0.5">
+                <div className="text-[#8b949e] text-xs font-mono mt-0.5">
                   {bestSeller.volume} • Formulation active
                 </div>
               </div>
