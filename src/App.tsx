@@ -257,6 +257,7 @@ export default function App() {
       ...p,
       ...override,
       price: customPrices[p.id] ?? override.price ?? p.price,
+      costPrice: override.costPrice !== undefined ? override.costPrice : p.costPrice,
       image: img,
     };
   });
@@ -517,7 +518,8 @@ export default function App() {
   const handleSavePrices = (
     newPrices: { [id: string]: number },
     newShipping: number,
-    newThreshold: number
+    newThreshold: number,
+    newCosts?: { [id: string]: number }
   ) => {
     setCustomPrices(newPrices);
     setShippingCost(newShipping);
@@ -526,6 +528,9 @@ export default function App() {
       localStorage.setItem('autodetail_custom_prices', JSON.stringify(newPrices));
       localStorage.setItem('autodetail_shipping_cost', newShipping.toString());
       localStorage.setItem('autodetail_free_shipping_threshold', newThreshold.toString());
+      if (newCosts) {
+        localStorage.setItem('autodetail_custom_costs', JSON.stringify(newCosts));
+      }
     } catch (e) {
       console.error(e);
     }
@@ -534,11 +539,12 @@ export default function App() {
     Object.entries(newPrices).forEach(([id, pr]) => {
       const prod = allRawProducts.find((p) => p.id === id);
       if (prod) {
-        updateProductInCloud({ ...prod, price: pr }).catch(() => {});
+        const cost = (newCosts && newCosts[id] !== undefined) ? newCosts[id] : prod.costPrice;
+        updateProductInCloud({ ...prod, price: pr, costPrice: cost }).catch(() => {});
       }
     });
 
-    showToast('Tarifs et paramètres de livraison enregistrés !');
+    showToast('Tarifs et paramètres de rentabilité enregistrés !');
   };
 
   const handleToggleBeforeAfter = (visible: boolean) => {
@@ -584,6 +590,7 @@ export default function App() {
   const handleApplyStocksFromSheet = (
     stocks: { [code: string]: number },
     arrivages?: { [code: string]: number },
+    couts?: { [code: string]: number },
     showNotice = true
   ) => {
     let updatedCount = 0;
@@ -638,11 +645,32 @@ export default function App() {
           incoming = currentOverride.incomingCount;
         }
 
+        let costPrice = currentOverride.costPrice;
+        if (couts) {
+          const cleanCouts: { [k: string]: number } = {};
+          Object.entries(couts).forEach(([k, v]) => {
+            cleanCouts[k.toUpperCase().replace(/[-_\s]/g, '')] = Number(v) || 0;
+          });
+          const targetIdClean = target.id.toUpperCase().replace(/[-_\s]/g, '');
+          const targetCodeClean = (target.code || '').toUpperCase().replace(/[-_\s]/g, '');
+          const targetRefClean = (target.refNumber || '').toUpperCase().replace(/[-_\s]/g, '');
+          const c =
+            cleanCouts[cleanInput] ??
+            cleanCouts[targetCodeClean] ??
+            cleanCouts[targetIdClean] ??
+            cleanCouts[targetRefClean] ??
+            (cleanInput.includes('EA229') || targetIdClean.includes('5306') ? (cleanCouts['EA229P'] || cleanCouts['EA229'] || 0) : 0);
+          if (c > 0) {
+            costPrice = c;
+          }
+        }
+
         newOverrides[target.id] = {
           ...currentOverride,
           stockCount: qty,
           stockStatus: newStatus,
           incomingCount: incoming,
+          costPrice: costPrice !== undefined ? costPrice : currentOverride.costPrice,
         };
 
         // Also push to Cloud Firestore
@@ -651,6 +679,7 @@ export default function App() {
           stockCount: qty,
           stockStatus: newStatus,
           incomingCount: incoming,
+          costPrice: costPrice !== undefined ? costPrice : target.costPrice,
         }).catch(() => {});
       }
     });
@@ -670,7 +699,7 @@ export default function App() {
     fetchStockFromAppsScript()
       .then((res) => {
         if (res.success && res.stocks && Object.keys(res.stocks).length > 0) {
-          handleApplyStocksFromSheet(res.stocks, res.arrivages, false);
+          handleApplyStocksFromSheet(res.stocks, res.arrivages, res.couts, false);
         }
       })
       .catch((err) => {

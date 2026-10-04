@@ -49,6 +49,7 @@ export const CatalogManagerModal: React.FC<CatalogManagerModalProps> = ({
   const [formName, setFormName] = useState<string>('');
   const [formVolume, setFormVolume] = useState<string>('500 ml');
   const [formPrice, setFormPrice] = useState<string>('15.00');
+  const [formCostPrice, setFormCostPrice] = useState<string>('0.00');
   const [formCategory, setFormCategory] = useState<Product['category']>('lavage');
   const [formBadge, setFormBadge] = useState<string>('');
   const [formStockStatus, setFormStockStatus] = useState<Product['stockStatus']>('in_stock');
@@ -71,6 +72,7 @@ export const CatalogManagerModal: React.FC<CatalogManagerModalProps> = ({
     setFormName(p.name);
     setFormVolume(p.volume);
     setFormPrice(p.price.toString());
+    setFormCostPrice(p.costPrice !== undefined ? p.costPrice.toString() : '0.00');
     setFormCategory(p.category);
     setFormBadge(p.badge || '');
     setFormStockStatus(p.stockStatus);
@@ -93,6 +95,7 @@ export const CatalogManagerModal: React.FC<CatalogManagerModalProps> = ({
     setFormName('');
     setFormVolume('1 pièce');
     setFormPrice('9.90');
+    setFormCostPrice('0.00');
     setFormCategory('accessoires');
     setFormBadge('');
     setFormStockStatus('in_stock');
@@ -121,6 +124,7 @@ export const CatalogManagerModal: React.FC<CatalogManagerModalProps> = ({
     if (!formName.trim() || !formPrice) return;
 
     const priceNum = parseFloat(formPrice.replace(',', '.')) || 15.0;
+    const costNum = parseFloat(formCostPrice.replace(',', '.')) || 0;
 
     const productPayload: Product = {
       id: formId.trim().toUpperCase(),
@@ -129,6 +133,7 @@ export const CatalogManagerModal: React.FC<CatalogManagerModalProps> = ({
       volume: formVolume.trim() || '500 ml',
       refNumber: formId.slice(0, 3),
       price: priceNum,
+      costPrice: costNum,
       stockStatus: formStockStatus,
       stockCount: formStockCount,
       badge: formBadge.trim() || '',
@@ -264,6 +269,20 @@ export const CatalogManagerModal: React.FC<CatalogManagerModalProps> = ({
                   onChange={(e) => setFormPrice(e.target.value)}
                   placeholder="14.95"
                   className="w-full bg-[#151a22] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2.5 text-sm text-[#eef1f4] outline-none font-mono font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[#8b949e] mb-1">
+                  Prix d'achat HT / Coût unitaire (€)
+                </label>
+                <input
+                  type="number"
+                  step="0.05"
+                  value={formCostPrice}
+                  onChange={(e) => setFormCostPrice(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full bg-[#151a22] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2.5 text-sm text-[#8b949e] outline-none font-mono"
                 />
               </div>
 

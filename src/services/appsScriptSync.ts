@@ -10,6 +10,7 @@ export interface StockSyncResult {
   message: string;
   stocks?: { [productCodeOrId: string]: number };
   arrivages?: { [productCodeOrId: string]: number };
+  couts?: { [productCodeOrId: string]: number };
 }
 
 export const DEFAULT_APPS_SCRIPT_URL =
@@ -167,6 +168,15 @@ export async function fetchStockFromAppsScript(customUrl?: string): Promise<Stoc
       });
     }
 
+    // Optional cost prices map from sheet (prix d'achat)
+    const coutsMap: { [key: string]: number } = {};
+    const rawCouts = data.couts || data.costs || data.prixAchat || data.costPrices;
+    if (rawCouts && typeof rawCouts === 'object') {
+      Object.entries(rawCouts).forEach(([k, v]) => {
+        coutsMap[k.toUpperCase()] = Math.max(0, Number(v) || 0);
+      });
+    }
+
     const nbRefs = Object.keys(stocksMap).length;
     const nbArrivages = Object.keys(arrivagesMap).filter((k) => arrivagesMap[k] > 0).length;
 
@@ -177,6 +187,7 @@ export async function fetchStockFromAppsScript(customUrl?: string): Promise<Stoc
       } !`,
       stocks: stocksMap,
       arrivages: arrivagesMap,
+      couts: Object.keys(coutsMap).length > 0 ? coutsMap : undefined,
     };
   } catch (err: any) {
     return {

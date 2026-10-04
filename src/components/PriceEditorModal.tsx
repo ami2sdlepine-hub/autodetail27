@@ -13,7 +13,8 @@ interface PriceEditorModalProps {
   onSave: (
     newPrices: { [productId: string]: number },
     newShippingCost: number,
-    newFreeShippingThreshold: number
+    newFreeShippingThreshold: number,
+    newCosts?: { [productId: string]: number }
   ) => void;
 }
 
@@ -36,17 +37,32 @@ export const PriceEditorModal: React.FC<PriceEditorModalProps> = ({
     return init;
   });
 
+  const [costs, setCosts] = useState<{ [productId: string]: string }>(() => {
+    const init: { [productId: string]: string } = {};
+    productList.forEach((p) => {
+      if (p.costPrice !== undefined) {
+        init[p.id] = p.costPrice.toFixed(2);
+      }
+    });
+    return init;
+  });
+
   const [shipping, setShipping] = useState<string>(shippingCost.toFixed(2));
   const [threshold, setThreshold] = useState<string>(freeShippingThreshold.toFixed(2));
   const [discountPercent, setDiscountPercent] = useState<string>('');
 
   useEffect(() => {
     if (isOpen) {
-      const init: { [productId: string]: string } = {};
+      const initP: { [productId: string]: string } = {};
+      const initC: { [productId: string]: string } = {};
       productList.forEach((p) => {
-        init[p.id] = (customPrices[p.id] ?? p.price).toFixed(2);
+        initP[p.id] = (customPrices[p.id] ?? p.price).toFixed(2);
+        if (p.costPrice !== undefined) {
+          initC[p.id] = p.costPrice.toFixed(2);
+        }
       });
-      setPrices(init);
+      setPrices(initP);
+      setCosts(initC);
       setShipping(shippingCost.toFixed(2));
       setThreshold(freeShippingThreshold.toFixed(2));
     }
@@ -56,6 +72,10 @@ export const PriceEditorModal: React.FC<PriceEditorModalProps> = ({
 
   const handlePriceChange = (id: string, value: string) => {
     setPrices((prev) => ({ ...prev, [id]: value }));
+  };
+
+  const handleCostChange = (id: string, value: string) => {
+    setCosts((prev) => ({ ...prev, [id]: value }));
   };
 
   const applyGlobalDiscount = () => {
@@ -75,10 +95,15 @@ export const PriceEditorModal: React.FC<PriceEditorModalProps> = ({
   const handleResetDefaults = () => {
     soundManager.playClick();
     const defPrices: { [productId: string]: string } = {};
+    const defCosts: { [productId: string]: string } = {};
     productList.forEach((p) => {
       defPrices[p.id] = p.price.toFixed(2);
+      if (p.costPrice !== undefined) {
+        defCosts[p.id] = p.costPrice.toFixed(2);
+      }
     });
     setPrices(defPrices);
+    setCosts(defCosts);
     setShipping('4.95');
     setThreshold('100.00');
   };
@@ -93,10 +118,18 @@ export const PriceEditorModal: React.FC<PriceEditorModalProps> = ({
       }
     });
 
+    const numericCosts: { [productId: string]: number } = {};
+    Object.entries(costs).forEach(([id, val]) => {
+      const num = parseFloat(val.replace(',', '.'));
+      if (!isNaN(num) && num >= 0) {
+        numericCosts[id] = num;
+      }
+    });
+
     const numShipping = parseFloat(shipping.replace(',', '.')) || 4.95;
     const numThreshold = parseFloat(threshold.replace(',', '.')) || 100.0;
 
-    onSave(numericPrices, numShipping, numThreshold);
+    onSave(numericPrices, numShipping, numThreshold, numericCosts);
     onClose();
   };
 
@@ -195,8 +228,8 @@ export const PriceEditorModal: React.FC<PriceEditorModalProps> = ({
         <div className="space-y-3 mb-6 max-h-[40vh] overflow-y-auto pr-1">
           {productList.map((p) => {
             const currentPrice = parseFloat(prices[p.id]) || p.price;
-            const cost = p.costPrice || 0;
-            const margin = currentPrice - cost;
+            const currentCost = costs[p.id] !== undefined ? (parseFloat(costs[p.id]) || 0) : (p.costPrice || 0);
+            const margin = currentPrice - currentCost;
             const marginPercent = currentPrice > 0 ? (margin / currentPrice) * 100 : 0;
 
             return (
@@ -219,14 +252,30 @@ export const PriceEditorModal: React.FC<PriceEditorModalProps> = ({
                 </div>
 
                 <div className="flex items-center gap-4">
-                  {cost > 0 && (
-                    <div className="hidden sm:block text-right text-[11px] font-mono">
-                      <div className="text-[#8b949e]">Coût : {cost.toFixed(2)} €</div>
-                      <div className="text-[#3ddc97] font-semibold">
-                        Marge : +{margin.toFixed(2)} € ({marginPercent.toFixed(0)}%)
-                      </div>
+                  <div className="hidden sm:block text-right text-[11px] font-mono">
+                    <div className="text-[#8b949e] flex items-center justify-end gap-1">
+                      <span>Coût :</span>
+                      <input
+                        type="number"
+                        step="0.05"
+                        placeholder="0.00"
+                        value={costs[p.id] ?? (p.costPrice ? p.costPrice.toFixed(2) : '')}
+                        onChange={(e) => handleCostChange(p.id, e.target.value)}
+                        className="w-16 bg-[#10141b] border border-[#232a35] focus:border-[#3ee6d8] rounded px-1.5 py-0.5 text-right text-xs text-[#eef1f4] font-mono outline-none"
+                        title="Prix d'achat HT unitaire (cliquez pour modifier)"
+                      />
+                      <span>€</span>
                     </div>
-                  )}
+                    {currentCost > 0 ? (
+                      <div className={margin >= 0 ? 'text-[#3ddc97] font-semibold' : 'text-[#ef4444] font-semibold'}>
+                        Marge : {margin >= 0 ? '+' : ''}{margin.toFixed(2)} € ({marginPercent.toFixed(0)}%)
+                      </div>
+                    ) : (
+                      <div className="text-[#f59e0b] text-[10px]">
+                        Coût non renseigné
+                      </div>
+                    )}
+                  </div>
 
                   <div className="w-24">
                     <input

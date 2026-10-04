@@ -28,7 +28,8 @@ interface BusinessSettingsModalProps {
   onSave: (newSettings: BusinessSettings) => void;
   onApplyStocks?: (
     stocks: { [productCode: string]: number },
-    arrivages?: { [productCode: string]: number }
+    arrivages?: { [productCode: string]: number },
+    couts?: { [productCode: string]: number }
   ) => void;
 }
 
@@ -112,7 +113,7 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
         message: `✓ Jeton secret validé ! ${res.message}`,
       });
       if (res.stocks && onApplyStocks) {
-        onApplyStocks(res.stocks, res.arrivages);
+        onApplyStocks(res.stocks, res.arrivages, res.couts);
       }
     } else {
       setSyncResult(res);
