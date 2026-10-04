@@ -5,8 +5,16 @@ import multiWashImg from '../assets/images/bulbee_multi_wash_real_1790974750104.
 import sacocheImg from '../assets/images/bulbee_sacoche_real_1790974851655.jpg';
 import sacocheNueImg from '../assets/images/bulbee_sacoche_nue_1791016827651.jpg';
 import springFreshImg from '../assets/images/bulbee_spring_fresh_real_1790974813712.jpg';
+import mintFreshImg from '../assets/images/bulbee_mint_fresh_1791102869845.jpg';
+import ginFreshImg from '../assets/images/bulbee_gin_fresh_1791102885611.jpg';
+import bubbleFreshImg from '../assets/images/bulbee_bubble_fresh_1791102850461.jpg';
 import tireShineImg from '../assets/images/bulbee_tire_shine_real_1790974796646.jpg';
 import wheelReactImg from '../assets/images/bulbee_wheel_react_real_1790974840669.jpg';
+import cutImg from '../assets/images/bulbee_cut_500ml_1791102725323.jpg';
+import correctImg from '../assets/images/bulbee_correct_500ml_1791102741762.jpg';
+import waxImg from '../assets/images/bulbee_wax_500ml_1791102759227.jpg';
+import bugCleanerImg from '../assets/images/bulbee_bug_cleaner_1791102780899.jpg';
+import instantShineImg from '../assets/images/bulbee_instant_shine_1791102796128.jpg';
 
 export interface Product {
   id: string;
@@ -194,7 +202,7 @@ export const CATALOG: Product[] = [
     code: 'MF150',
     name: 'Mint Fresh',
     volume: '150 ml',
-    refNumber: '107',
+    refNumber: '94',
     price: 9.95,
     costPrice: 4.88,
     stockStatus: 'backorder',
@@ -207,7 +215,7 @@ export const CATALOG: Product[] = [
       'Ne pas pulvériser directement sur les écrans tactiles ou compteurs numériques.',
       'Renouveler toutes les 2 à 3 semaines pour maintenir une signature olfactive premium.'
     ],
-    image: springFreshImg,
+    image: mintFreshImg,
   },
 
   // 9. Gin Fresh 150 ml (GF150)
@@ -216,7 +224,7 @@ export const CATALOG: Product[] = [
     code: 'GF150',
     name: 'Gin Fresh',
     volume: '150 ml',
-    refNumber: '108',
+    refNumber: '92',
     price: 9.95,
     costPrice: 4.88,
     stockStatus: 'backorder',
@@ -229,7 +237,7 @@ export const CATALOG: Product[] = [
       'Laisser l\'habitacle fermé 5 minutes pour une diffusion homogène.',
       'Conserver le flacon à l\'abri des fortes chaleurs dans la boîte à gants.'
     ],
-    image: springFreshImg,
+    image: ginFreshImg,
   },
 
   // 10. Bubble Fresh 150 ml (BF150)
@@ -238,7 +246,7 @@ export const CATALOG: Product[] = [
     code: 'BF150',
     name: 'Bubble Fresh',
     volume: '150 ml',
-    refNumber: '109',
+    refNumber: '91',
     price: 9.95,
     costPrice: 4.88,
     stockStatus: 'backorder',
@@ -251,7 +259,7 @@ export const CATALOG: Product[] = [
       'Idéal avant un long trajet pour une sensation de propreté immédiate.',
       'Formule base aqueuse ne tachant pas les textiles.'
     ],
-    image: springFreshImg,
+    image: bubbleFreshImg,
   },
 
   // 11. Spring Fresh 150 ml (SF150)
@@ -260,7 +268,7 @@ export const CATALOG: Product[] = [
     code: 'SF150',
     name: 'Spring Fresh',
     volume: '150 ml',
-    refNumber: '106',
+    refNumber: '93',
     price: 9.95,
     costPrice: 4.88,
     stockStatus: 'in_stock',
@@ -321,7 +329,7 @@ export const CATALOG: Product[] = [
       'Laisser agir 2 minutes sans laisser sécher le produit au soleil.',
       'Rincer directement au nettoyeur haute pression.'
     ],
-    image: multiWashImg,
+    image: bugCleanerImg,
   },
 
   // 14. Instant Shine 500 ml (IS500)
@@ -344,7 +352,7 @@ export const CATALOG: Product[] = [
       'Pulvériser un léger brouillard puis essuyer avec une microfibre dense.',
       'Lustrer avec une deuxième microfibre pour une brillance miroir immédiate.'
     ],
-    image: blueGlassImg,
+    image: instantShineImg,
   },
 
   // 15. Cut 500 ml (CUT500)
@@ -367,7 +375,7 @@ export const CATALOG: Product[] = [
       'Travailler par zones de 40x40 cm à vitesse moyenne jusqu\'à transparence du film.',
       'Essuyer le résidu avec un cleaner d\'inspection IPA et une microfibre douce.'
     ],
-    image: wheelReactImg,
+    image: cutImg,
   },
 
   // 16. Correct 500 ml (CORRECT500)
@@ -390,7 +398,7 @@ export const CATALOG: Product[] = [
       'Faire monter la vitesse de la polisseuse pour décomposer les micro-grains.',
       'Parfait en étape 2 de polissage avant la pose de la cire de protection Wax.'
     ],
-    image: easyPlastImg,
+    image: correctImg,
   },
 
   // 17. Wax 500 ml (WAX500)
@@ -413,6 +421,6 @@ export const CATALOG: Product[] = [
       'Laisser sécher (haze) 10 à 15 minutes selon l\'hygrométrie ambiante.',
       'Essuyer sans pression avec une microfibre épaisse pour libérer l\'éclat.'
     ],
-    image: hydroWashImg,
+    image: waxImg,
   }
 ];
