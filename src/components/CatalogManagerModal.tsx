@@ -15,6 +15,7 @@ import {
   Percent,
 } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
+import { compressImage } from '../utils/imageCompressor';
 
 interface CatalogManagerModalProps {
   isOpen: boolean;
@@ -107,16 +108,12 @@ export const CatalogManagerModal: React.FC<CatalogManagerModalProps> = ({
     setActiveTab('add');
   };
 
-  const handleImageUpload = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const res = e.target?.result as string;
-      if (res) {
-        setFormImage(res);
-        soundManager.playPschitt();
-      }
-    };
-    reader.readAsDataURL(file);
+  const handleImageUpload = async (file: File) => {
+    const compressed = await compressImage(file, 900, 900, 0.82);
+    if (compressed) {
+      setFormImage(compressed);
+      soundManager.playPschitt();
+    }
   };
 
   const handleSaveForm = (e: React.FormEvent) => {

@@ -6,6 +6,7 @@ import { soundManager } from '../utils/soundEffects';
 interface PriceEditorModalProps {
   isOpen: boolean;
   onClose: () => void;
+  products?: Product[];
   customPrices: { [productId: string]: number };
   shippingCost: number;
   freeShippingThreshold: number;
@@ -19,14 +20,17 @@ interface PriceEditorModalProps {
 export const PriceEditorModal: React.FC<PriceEditorModalProps> = ({
   isOpen,
   onClose,
+  products,
   customPrices,
   shippingCost,
   freeShippingThreshold,
   onSave,
 }) => {
+  const productList = products && products.length > 0 ? products : CATALOG;
+
   const [prices, setPrices] = useState<{ [productId: string]: string }>(() => {
     const init: { [productId: string]: string } = {};
-    CATALOG.forEach((p) => {
+    productList.forEach((p) => {
       init[p.id] = (customPrices[p.id] ?? p.price).toFixed(2);
     });
     return init;
@@ -39,14 +43,14 @@ export const PriceEditorModal: React.FC<PriceEditorModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       const init: { [productId: string]: string } = {};
-      CATALOG.forEach((p) => {
+      productList.forEach((p) => {
         init[p.id] = (customPrices[p.id] ?? p.price).toFixed(2);
       });
       setPrices(init);
       setShipping(shippingCost.toFixed(2));
       setThreshold(freeShippingThreshold.toFixed(2));
     }
-  }, [isOpen, customPrices, shippingCost, freeShippingThreshold]);
+  }, [isOpen, customPrices, shippingCost, freeShippingThreshold, productList]);
 
   if (!isOpen) return null;
 
@@ -60,7 +64,7 @@ export const PriceEditorModal: React.FC<PriceEditorModalProps> = ({
 
     soundManager.playPschitt();
     const updated: { [productId: string]: string } = {};
-    CATALOG.forEach((p) => {
+    productList.forEach((p) => {
       const current = parseFloat(prices[p.id]) || p.price;
       const discounted = current * (1 - percent / 100);
       updated[p.id] = (Math.round(discounted * 20) / 20).toFixed(2);
@@ -71,7 +75,7 @@ export const PriceEditorModal: React.FC<PriceEditorModalProps> = ({
   const handleResetDefaults = () => {
     soundManager.playClick();
     const defPrices: { [productId: string]: string } = {};
-    CATALOG.forEach((p) => {
+    productList.forEach((p) => {
       defPrices[p.id] = p.price.toFixed(2);
     });
     setPrices(defPrices);
@@ -182,14 +186,14 @@ export const PriceEditorModal: React.FC<PriceEditorModalProps> = ({
               </button>
             </div>
             <p className="text-[10px] text-[#8b949e]">
-              Baisse automatiquement les 17 prix au prorata (arrondi 5 cts).
+              Baisse automatiquement les prix au prorata (arrondi 5 cts).
             </p>
           </div>
         </div>
 
-        {/* 17 Products Price Table */}
+        {/* Products Price Table */}
         <div className="space-y-3 mb-6 max-h-[40vh] overflow-y-auto pr-1">
-          {CATALOG.map((p) => {
+          {productList.map((p) => {
             const currentPrice = parseFloat(prices[p.id]) || p.price;
             const cost = p.costPrice || 0;
             const margin = currentPrice - cost;

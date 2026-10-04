@@ -92,18 +92,7 @@ export default function App() {
   const [customPhotos, setCustomPhotos] = useState<{ [productId: string]: string }>(() => {
     try {
       const saved = localStorage.getItem('autodetail_custom_photos');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const cleaned: { [id: string]: string } = {};
-        Object.entries(parsed).forEach(([k, v]) => {
-          if (typeof v === 'string' && !v.startsWith('data:image')) {
-            cleaned[k] = v;
-          }
-        });
-        localStorage.setItem('autodetail_custom_photos', JSON.stringify(cleaned));
-        return cleaned;
-      }
-      return {};
+      return saved ? JSON.parse(saved) : {};
     } catch {
       return {};
     }
@@ -262,21 +251,13 @@ export default function App() {
   // All products base with overrides applied
   const allRawProducts = [...CATALOG, ...extraProducts].map((p) => {
     const override = productOverrides[p.id] || {};
-    const catalogItem = CATALOG.find((catP) => catP.id === p.id);
-
-    // Official products always use their genuine bundled high-res visual
-    let finalImage = catalogItem ? catalogItem.image : p.image;
-    if (customPhotos[p.id] && !customPhotos[p.id].startsWith('data:image')) {
-      finalImage = customPhotos[p.id];
-    } else if (override.image && !override.image.startsWith('data:image')) {
-      finalImage = override.image;
-    }
+    const img = customPhotos[p.id] || override.image || p.image;
 
     return {
       ...p,
       ...override,
       price: customPrices[p.id] ?? override.price ?? p.price,
-      image: finalImage,
+      image: img,
     };
   });
 
@@ -307,10 +288,7 @@ export default function App() {
 
         cloudProducts.forEach((p: any) => {
           if (p.price) cloudPrices[p.id] = p.price;
-          // Ignore heavy legacy base64 strings so they never overwrite official photos
-          if (p.image && !p.image.startsWith('data:image')) {
-            cloudPhotos[p.id] = p.image;
-          }
+          if (p.image) cloudPhotos[p.id] = p.image;
           if (p.isHidden) cloudHidden.push(p.id);
           if (!CATALOG.some((catP) => catP.id === p.id)) {
             cloudExtra.push(p);
@@ -321,7 +299,13 @@ export default function App() {
           setCustomPrices((prev) => ({ ...prev, ...cloudPrices }));
         }
         if (Object.keys(cloudPhotos).length > 0) {
-          setCustomPhotos((prev) => ({ ...prev, ...cloudPhotos }));
+          setCustomPhotos((prev) => {
+            const next = { ...prev, ...cloudPhotos };
+            try {
+              localStorage.setItem('autodetail_custom_photos', JSON.stringify(next));
+            } catch {}
+            return next;
+          });
         }
         if (cloudHidden.length > 0) {
           setHiddenProductIds((prev) => Array.from(new Set([...prev, ...cloudHidden])));
@@ -987,6 +971,7 @@ export default function App() {
       <PriceEditorModal
         isOpen={isPriceModalOpen}
         onClose={() => setIsPriceModalOpen(false)}
+        products={allRawProducts}
         customPrices={customPrices}
         shippingCost={shippingCost}
         freeShippingThreshold={freeShippingThreshold}
@@ -997,6 +982,7 @@ export default function App() {
       <PhotoManagerModal
         isOpen={isPhotoModalOpen}
         onClose={() => setIsPhotoModalOpen(false)}
+        products={allRawProducts}
         customPhotos={customPhotos}
         onUpdatePhotos={handleUpdatePhotos}
       />

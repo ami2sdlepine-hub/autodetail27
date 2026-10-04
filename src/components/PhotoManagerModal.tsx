@@ -1,11 +1,13 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { CATALOG, Product } from '../data/products';
 import { X, Upload, Camera, Check, RefreshCw, AlertCircle, ImageIcon } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
+import { compressImage } from '../utils/imageCompressor';
 
 interface PhotoManagerModalProps {
   isOpen: boolean;
   onClose: () => void;
+  products?: Product[];
   customPhotos: { [productId: string]: string };
   onUpdatePhotos: (photos: { [productId: string]: string }) => void;
 }
@@ -13,13 +15,19 @@ interface PhotoManagerModalProps {
 export const PhotoManagerModal: React.FC<PhotoManagerModalProps> = ({
   isOpen,
   onClose,
+  products,
   customPhotos,
   onUpdatePhotos,
 }) => {
+  const productList = products && products.length > 0 ? products : CATALOG;
   const [photos, setPhotos] = useState<{ [productId: string]: string }>(customPhotos);
   const [dragOver, setDragOver] = useState<boolean>(false);
   const [notification, setNotification] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setPhotos(customPhotos);
+  }, [customPhotos, isOpen]);
 
   if (!isOpen) return null;
 
@@ -62,34 +70,39 @@ export const PhotoManagerModal: React.FC<PhotoManagerModalProps> = ({
     if (lower.includes('cut')) return 'CUT500';
     if (lower.includes('correct')) return 'CORRECT500';
     if (lower.includes('wax')) return 'WAX500';
+    if (lower.includes('applicateur') || lower.includes('tampon') || lower.includes('art5306') || lower.includes('pneu')) return 'ART-5306';
+
+    // Search by product name in dynamic productList
+    const dynamicMatch = productList.find(
+      (p) => lower.includes(p.name.toLowerCase().replace(/[-_\s]/g, '')) || lower.includes(p.id.toLowerCase())
+    );
+    if (dynamicMatch) return dynamicMatch.id;
+
     return null;
   };
 
-  const handleFiles = (files: FileList | null) => {
+  const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     const updated = { ...photos };
     let matchedCount = 0;
 
-    Array.from(files).forEach((file) => {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       const detectedId = detectProductId(file.name);
       if (detectedId) {
         matchedCount++;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const result = e.target?.result as string;
-          if (result) {
-            updated[detectedId] = result;
-            setPhotos({ ...updated });
-            onUpdatePhotos({ ...updated });
-            soundManager.playPschitt();
-          }
-        };
-        reader.readAsDataURL(file);
+        const compressed = await compressImage(file, 900, 900, 0.82);
+        if (compressed) {
+          updated[detectedId] = compressed;
+        }
       }
-    });
+    }
 
     if (matchedCount > 0) {
-      setNotification(`${matchedCount} photo(s) reconnue(s) et mise(s) à jour instantanément !`);
+      setPhotos(updated);
+      onUpdatePhotos(updated);
+      soundManager.playCashRegister();
+      setNotification(`${matchedCount} photo(s) reconnue(s), optimisée(s) et synchronisée(s) !`);
       setTimeout(() => setNotification(null), 3500);
     } else {
       setNotification('Nom de fichier non reconnu. Cliquez sur l\'icône de flacon spécifique ci-dessous.');
@@ -103,20 +116,16 @@ export const PhotoManagerModal: React.FC<PhotoManagerModalProps> = ({
     handleFiles(e.dataTransfer.files);
   };
 
-  const handleSingleUpload = (productId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSingleUpload = async (productId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        if (result) {
-          const updated = { ...photos, [productId]: result };
-          setPhotos(updated);
-          onUpdatePhotos(updated);
-          soundManager.playPschitt();
-        }
-      };
-      reader.readAsDataURL(file);
+      const compressed = await compressImage(file, 900, 900, 0.82);
+      if (compressed) {
+        const updated = { ...photos, [productId]: compressed };
+        setPhotos(updated);
+        onUpdatePhotos(updated);
+        soundManager.playPschitt();
+      }
     }
   };
 
@@ -205,7 +214,7 @@ export const PhotoManagerModal: React.FC<PhotoManagerModalProps> = ({
         <div className="space-y-4 mb-6">
           <div className="flex items-center justify-between">
             <span className="text-xs font-plate uppercase text-[#3ee6d8]">
-              État des 17 références Bulbee
+              État des références catalogue ({productList.length})
             </span>
             <button
               onClick={handleResetPhotos}
@@ -217,7 +226,7 @@ export const PhotoManagerModal: React.FC<PhotoManagerModalProps> = ({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[44vh] overflow-y-auto pr-1">
-            {CATALOG.map((product) => {
+            {productList.map((product) => {
               const activeImage = photos[product.id] || product.image;
               const hasCustom = Boolean(photos[product.id]);
 

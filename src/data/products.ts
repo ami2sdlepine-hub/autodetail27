@@ -1,10 +1,10 @@
 import blueGlassImg from '../assets/images/bulbee_blue_glass_real_1790974766071.jpg';
 import easyPlastImg from '../assets/images/bulbee_easy_plast_real_1790974782615.jpg';
 import hydroWashImg from '../assets/images/bulbee_hydro_wash_real_1790974827509.jpg';
-import multiWashImg from '../assets/images/bulbee_multi_wash_real_1790974750104.jpg';
+import multiCleanImg from '../assets/images/bulbee_multi_clean_real_1791139754294.jpg';
 import sacocheImg from '../assets/images/bulbee_sacoche_real_1790974851655.jpg';
 import sacocheNueImg from '../assets/images/bulbee_sacoche_nue_1791016827651.jpg';
-import springFreshImg from '../assets/images/bulbee_spring_fresh_real_1790974813712.jpg';
+import springFreshImg from '../assets/images/bulbee_spring_fresh_93_1791139765774.jpg';
 import mintFreshImg from '../assets/images/bulbee_mint_fresh_1791102869845.jpg';
 import ginFreshImg from '../assets/images/bulbee_gin_fresh_1791102885611.jpg';
 import bubbleFreshImg from '../assets/images/bulbee_bubble_fresh_1791102850461.jpg';
@@ -15,6 +15,7 @@ import correctImg from '../assets/images/bulbee_correct_real_1791116536517.jpg';
 import waxImg from '../assets/images/bulbee_wax_real_1791116550540.jpg';
 import bugCleanerImg from '../assets/images/bulbee_bug_cleaner_1791102780899.jpg';
 import instantShineImg from '../assets/images/bulbee_instant_shine_1791102796128.jpg';
+export { default as tireApplicatorImg } from '../assets/images/tire_applicator_pad_1791139731451.jpg';
 
 export interface Product {
   id: string;
@@ -59,7 +60,7 @@ export const CATALOG: Product[] = [
       'Frotter à l\'aide d\'une brosse douce ou d\'un pinceau detailing pour émulsionner la saleté.',
       'Essuyer avec une microfibre sèche sans rinçage pour un fini net et mat.'
     ],
-    image: multiWashImg,
+    image: multiCleanImg,
   },
 
   // 2. Blue Glass 500 ml (BG500)
