@@ -590,27 +590,53 @@ export default function App() {
     const newOverrides = { ...productOverrides };
 
     Object.entries(stocks).forEach(([codeOrRef, qty]) => {
+      const cleanInput = codeOrRef.toUpperCase().replace(/[-_\s]/g, '');
       const target = allRawProducts.find(
-        (p) =>
-          p.id.toUpperCase() === codeOrRef.toUpperCase() ||
-          p.code.toUpperCase() === codeOrRef.toUpperCase() ||
-          p.refNumber === codeOrRef
+        (p) => {
+          const pId = p.id.toUpperCase().replace(/[-_\s]/g, '');
+          const pCode = (p.code || '').toUpperCase().replace(/[-_\s]/g, '');
+          const pRef = (p.refNumber || '').toUpperCase().replace(/[-_\s]/g, '');
+
+          return (
+            p.id.toUpperCase() === codeOrRef.toUpperCase() ||
+            p.code.toUpperCase() === codeOrRef.toUpperCase() ||
+            p.refNumber.toUpperCase() === codeOrRef.toUpperCase() ||
+            pId === cleanInput ||
+            pCode === cleanInput ||
+            pRef === cleanInput ||
+            // Match EA229P to applicateur pneu
+            (cleanInput.includes('EA229') && (pId.includes('5306') || pCode.includes('5306') || p.name.toUpperCase().includes('APPLICATEUR')))
+          );
+        }
       );
 
       if (target) {
         updatedCount++;
         const currentOverride = newOverrides[target.id] || {};
         const newStatus = qty <= 0 ? 'backorder' : qty <= 2 ? 'low_stock' : 'in_stock';
-        const incoming =
-          arrivages && (arrivages[codeOrRef.toUpperCase()] !== undefined ||
-            (target.code && arrivages[target.code.toUpperCase()] !== undefined) ||
-            (target.id && arrivages[target.id.toUpperCase()] !== undefined))
-            ? Number(
-                arrivages[codeOrRef.toUpperCase()] ??
-                  arrivages[target.code.toUpperCase()] ??
-                  arrivages[target.id.toUpperCase()]
-              ) || 0
-            : currentOverride.incomingCount || 0;
+        
+        let incoming = 0;
+        if (arrivages) {
+          const cleanArrivages: { [k: string]: number } = {};
+          Object.entries(arrivages).forEach(([k, v]) => {
+            cleanArrivages[k.toUpperCase().replace(/[-_\s]/g, '')] = Number(v) || 0;
+          });
+
+          const targetIdClean = target.id.toUpperCase().replace(/[-_\s]/g, '');
+          const targetCodeClean = (target.code || '').toUpperCase().replace(/[-_\s]/g, '');
+          const targetRefClean = (target.refNumber || '').toUpperCase().replace(/[-_\s]/g, '');
+
+          incoming =
+            cleanArrivages[cleanInput] ??
+            cleanArrivages[targetCodeClean] ??
+            cleanArrivages[targetIdClean] ??
+            cleanArrivages[targetRefClean] ??
+            (cleanInput.includes('EA229') || targetIdClean.includes('5306') ? (cleanArrivages['EA229P'] || cleanArrivages['EA229'] || 0) : 0);
+        }
+
+        if (incoming === 0 && currentOverride.incomingCount) {
+          incoming = currentOverride.incomingCount;
+        }
 
         newOverrides[target.id] = {
           ...currentOverride,
