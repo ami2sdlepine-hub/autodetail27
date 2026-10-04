@@ -20,7 +20,7 @@ export const FaqAccordion: React.FC = () => {
     },
     {
       q: 'Le paiement en ligne par carte bancaire est-il sécurisé ?',
-      a: 'Absolument. Nous utilisons la solution française de paiement agréée SumUp avec protocole sécurisé SSL 256 bits et authentification 3D Secure (confirmation via votre application bancaire). Vos coordonnées bancaires ne sont jamais stockées sur nos serveurs.',
+      a: 'Absolument. Nous utilisons un protocole de paiement ultra-sécurisé avec chiffrement SSL 256 bits et authentification 3D Secure (confirmation via votre application bancaire), ainsi que la prise en charge d\'Apple Pay et Google Pay. Vos coordonnées bancaires ne sont jamais stockées sur nos serveurs.',
     },
   ];
 

@@ -18,7 +18,6 @@ export interface BusinessSettings {
   address: string;
   phone: string;
   email: string;
-  sumUpPaymentLink: string;
 }
 
 interface BusinessSettingsModalProps {
@@ -47,9 +46,6 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
   );
   const [phone, setPhone] = useState<string>(settings.phone || '');
   const [email, setEmail] = useState<string>(settings.email || 'contact@autodetail27.fr');
-  const [sumUpPaymentLink, setSumUpPaymentLink] = useState<string>(
-    settings.sumUpPaymentLink || ''
-  );
 
   // Google Apps Script state
   const [appsScriptUrl, setAppsScriptUrlState] = useState<string>(getAppsScriptUrl());
@@ -73,7 +69,6 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
       address: address.trim(),
       phone: phone.trim(),
       email: email.trim(),
-      sumUpPaymentLink: sumUpPaymentLink.trim(),
     };
 
     setAppsScriptUrl(appsScriptUrl);
@@ -129,7 +124,7 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
               Paramètres Entreprise & Connexions
             </h3>
             <p className="text-xs text-[#8b949e]">
-              Coordonnées, lien SumUp et synchronisation Google Sheets / Apps Script
+              Coordonnées de l'entreprise et synchronisation Google Sheets / Apps Script
             </p>
           </div>
         </div>
@@ -227,22 +222,26 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
             )}
           </div>
 
-          {/* Section 2: SumUp Payment */}
+          {/* Section 2: Paiement Sécurisé Stripe Checkout */}
           <div className="p-4 rounded-2xl bg-[#151a22] border border-[#232a35] space-y-3">
-            <div className="flex items-center gap-2 text-xs font-plate uppercase text-[#3ee6d8]">
-              <CreditCard className="w-4 h-4" />
-              <span>Lien de Paiement SumUp Pay</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-plate uppercase text-[#3ee6d8]">
+                <CreditCard className="w-4 h-4" />
+                <span>Paiement en ligne sécurisé (Stripe Checkout)</span>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#3ee6d8]/10 text-[#3ee6d8] border border-[#3ee6d8]/30">
+                CB • Apple Pay • Google Pay
+              </span>
             </div>
-            <p className="text-xs text-[#8b949e]">
-              Lien direct vers votre page de paiement SumUp sécurisée (ou QR code).
+            <p className="text-xs text-[#8b949e] leading-relaxed">
+              Encaissement direct et sécurisé. Les montants sont verrouillés automatiquement au centime près selon le panier et le mode d'expédition choisi.
             </p>
-            <input
-              type="url"
-              value={sumUpPaymentLink}
-              onChange={(e) => setSumUpPaymentLink(e.target.value)}
-              placeholder="https://pay.sumup.com/b2c/QHQ1ZC1S"
-              className="w-full bg-[#10141b] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2.5 text-xs text-[#eef1f4] outline-none font-mono"
-            />
+            <div className="p-3 rounded-xl bg-black/40 border border-[#232a35] text-[11px] text-[#8b949e] space-y-1">
+              <p className="text-[#eef1f4] font-medium">Clé secrète d'encaissement :</p>
+              <p>
+                Définissez la variable serveur <code className="text-[#3ee6d8]">STRIPE_SECRET_KEY</code> (disponible sur votre compte <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer" className="text-[#3ee6d8] underline">stripe.com</a>).
+              </p>
+            </div>
           </div>
 
           {/* Section 3: Mentions Légales & SIRET */}

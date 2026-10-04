@@ -11,8 +11,8 @@ export const HowToOrder: React.FC = () => {
     },
     {
       num: '02',
-      title: 'Paiement sécurisé SumUp',
-      desc: 'Réglez en toute sérénité en ligne par carte bancaire avec la passerelle française sécurisée SumUp.',
+      title: 'Paiement sécurisé en ligne',
+      desc: 'Réglez en toute sérénité par Carte Bancaire, Apple Pay ou Google Pay avec protocole 3D-Secure chiffré SSL.',
       icon: CreditCard,
     },
     {

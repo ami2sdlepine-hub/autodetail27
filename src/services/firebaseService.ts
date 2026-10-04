@@ -43,16 +43,41 @@ export function subscribeToProducts(callback: (products: Product[]) => void) {
   );
 }
 
+function sanitizeProductForFirestore(product: Product): Record<string, any> {
+  const sanitized: Record<string, any> = {
+    id: product.id,
+    code: product.code || product.id,
+    name: product.name || '',
+    volume: product.volume || '500 ml',
+    refNumber: product.refNumber || '',
+    price: Number(product.price) || 0,
+    costPrice: product.costPrice !== undefined ? Number(product.costPrice) : 0,
+    stockStatus: product.stockStatus || 'in_stock',
+    badge: product.badge ? product.badge.trim() : '',
+    category: product.category || 'accessoires',
+    colorAccent: product.colorAccent || '#3ee6d8',
+    usage: product.usage || '',
+    detail: product.detail || '',
+    conseils: Array.isArray(product.conseils) ? product.conseils : [],
+    image: product.image || '',
+    isHidden: Boolean(product.isHidden),
+  };
+  if (product.stockCount !== undefined) {
+    sanitized.stockCount = Number(product.stockCount);
+  }
+  return sanitized;
+}
+
 // Save or update product in Cloud Firestore
 export async function updateProductInCloud(product: Product): Promise<void> {
   const docRef = doc(db, 'products', product.id);
-  await setDoc(docRef, product, { merge: true });
+  await setDoc(docRef, sanitizeProductForFirestore(product), { merge: true });
 }
 
 // Add new product in Cloud Firestore
 export async function addProductToCloud(product: Product): Promise<void> {
   const docRef = doc(db, 'products', product.id);
-  await setDoc(docRef, product);
+  await setDoc(docRef, sanitizeProductForFirestore(product));
 }
 
 // Remove or hide product in Cloud Firestore

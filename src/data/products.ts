@@ -33,6 +33,7 @@ export interface Product {
   image: string;
   colorAccent: string;
   category: 'interieur' | 'lavage' | 'jantes_pneus' | 'kits' | 'parfums' | 'polish_cires' | 'accessoires';
+  isHidden?: boolean;
 }
 
 export const CATALOG: Product[] = [

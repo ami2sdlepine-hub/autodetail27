@@ -134,7 +134,7 @@ export const CatalogManagerModal: React.FC<CatalogManagerModalProps> = ({
       price: priceNum,
       stockStatus: formStockStatus,
       stockCount: formStockCount,
-      badge: formBadge.trim() || undefined,
+      badge: formBadge.trim() || '',
       category: formCategory,
       usage: formUsage.trim(),
       detail: formDetail.trim(),

@@ -16,11 +16,6 @@ import {
   AlertCircle,
   Building,
   Package,
-  Copy,
-  Check,
-  AlertTriangle,
-  ExternalLink,
-  Smartphone,
   Zap,
 } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
@@ -38,7 +33,6 @@ interface CheckoutModalProps {
   shippingCost: number;
   freeShippingThreshold: number;
   onOrderCompleted: () => void;
-  sumUpLink?: string;
 }
 
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
@@ -50,7 +44,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   shippingCost,
   freeShippingThreshold,
   onOrderCompleted,
-  sumUpLink,
 }) => {
   const [carrier, setCarrier] = useState<CarrierType>(deliveryCarrier);
   const [step, setStep] = useState<'form' | 'success'>('form');
@@ -67,22 +60,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [city, setCity] = useState<string>('');
   const [relayPointPreference, setRelayPointPreference] = useState<string>('');
   const [pickupDateSlot, setPickupDateSlot] = useState<string>('');
-  const [paymentMethod, setPaymentMethod] = useState<'stripe_card' | 'sumup_card' | 'onsite_pickup'>('stripe_card');
+  const [paymentMethod, setPaymentMethod] = useState<'stripe_card' | 'onsite_pickup'>('stripe_card');
   const [completedOrderRef, setCompletedOrderRef] = useState<string>('');
-  const [copiedAmount, setCopiedAmount] = useState<boolean>(false);
-  const [stripeStatus, setStripeStatus] = useState<{ configured: boolean; mode: string }>({ configured: false, mode: 'none' });
-  const [stripeNeedsConfig, setStripeNeedsConfig] = useState<boolean>(false);
-
-  useEffect(() => {
-    fetch('/api/stripe-status')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && typeof data.configured === 'boolean') {
-          setStripeStatus(data);
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   if (!isOpen) return null;
 
@@ -154,7 +133,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       shippingCost: effectiveShipping,
       total,
       paymentMethod,
-      status: paymentMethod === 'onsite_pickup' ? 'confirmed_pickup_pending' : paymentMethod === 'stripe_card' ? 'pending_stripe' : 'paid_sumup',
+      status: paymentMethod === 'onsite_pickup' ? 'confirmed_pickup_pending' : 'paid_card',
     };
 
     try {
@@ -223,12 +202,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           onOrderCompleted();
           window.location.href = data.url;
           return;
-        } else if (data.needsConfig) {
-          setStripeNeedsConfig(true);
         }
       } catch (err) {
-        console.error('Stripe session creation error:', err);
-        setStripeNeedsConfig(true);
+        console.warn('Stripe session creation notice:', err);
       }
     }
 
@@ -537,33 +513,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         <span className="font-bold">Carte Bancaire, Apple Pay & Google Pay</span>
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#3ee6d8]/15 text-[#3ee6d8] font-mono font-bold flex items-center gap-1">
                           <Zap className="w-3 h-3 text-[#3ee6d8]" />
-                          Montant verrouillé
+                          100% Sécurisé
                         </span>
                       </div>
                       <p className="text-[#8b949e] mt-1 leading-snug">
-                        Paiement sécurisé Stripe Checkout. Montant bloqué au centime près, 3D-Secure, Face ID et Touch ID sur mobile.
-                      </p>
-                    </div>
-                  </label>
-
-                  <label
-                    className={`flex items-start gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all ${
-                      paymentMethod === 'sumup_card'
-                        ? 'bg-[#151a22] border-[#3ee6d8]'
-                        : 'bg-[#10141b] border-[#232a35] hover:border-[#3ee6d8]/50'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="payment"
-                      checked={paymentMethod === 'sumup_card'}
-                      onChange={() => setPaymentMethod('sumup_card')}
-                      className="mt-1 accent-[#3ee6d8]"
-                    />
-                    <div className="flex-1 text-xs">
-                      <div className="font-plate text-[#eef1f4]">Lien SumUp Pay</div>
-                      <p className="text-[#8b949e] mt-1 leading-snug">
-                        Règlement par carte bancaire sur le lien de paiement libre SumUp.
+                        Paiement sécurisé crypté SSL. Prise en charge des cartes CB, Visa, Mastercard, Apple Pay et Google Pay.
                       </p>
                     </div>
                   </label>
@@ -586,7 +540,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       <div className="flex-1 text-xs">
                         <div className="font-plate text-[#eef1f4]">Règlement sur place au retrait</div>
                         <p className="text-[#8b949e] mt-1 leading-snug">
-                          Paiement lors de la remise en main propre à l'atelier (CB sur TPE SumUp ou Espèces).
+                          Paiement lors de la remise en main propre à l'atelier (CB ou Espèces).
                         </p>
                       </div>
                     </label>
@@ -647,102 +601,40 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </p>
             </div>
 
-            {paymentMethod === 'stripe_card' && stripeNeedsConfig && (
-              <div className="p-5 rounded-2xl bg-[#151a22] border-2 border-[#3ee6d8]/60 text-xs text-[#eef1f4] max-w-lg mx-auto space-y-4 text-left">
-                <div className="flex items-center gap-2 text-[#3ee6d8]">
-                  <Zap className="w-5 h-5 flex-shrink-0" />
-                  <span className="font-plate text-sm uppercase font-bold">
-                    Activation Stripe Checkout (Montant 100% verrouillé)
-                  </span>
+            <div className="p-6 rounded-2xl bg-[#151a22] border border-[#232a35] text-xs text-[#eef1f4] max-w-md mx-auto space-y-4 text-left">
+              <div className="flex items-center justify-between pb-3 border-b border-[#232a35]">
+                <span className="text-xs font-mono text-[#8b949e] uppercase">
+                  Montant de la commande :
+                </span>
+                <span className="font-plate text-2xl font-black text-[#3ee6d8]">
+                  {total.toFixed(2).replace('.', ',')} €
+                </span>
+              </div>
+
+              <div className="space-y-2 text-xs font-mono">
+                <div className="flex justify-between text-[#8b949e]">
+                  <span>Mode de livraison :</span>
+                  <span className="text-[#eef1f4] font-medium">{activeOption.name}</span>
                 </div>
-
-                <p className="text-[#8b949e] text-xs leading-relaxed">
-                  Votre commande <strong className="text-[#eef1f4]">{completedOrderRef}</strong> a été enregistrée avec succès ! Pour activer le paiement direct par <strong>Carte Bancaire, Apple Pay et Google Pay</strong> sans saisie manuelle de montant :
-                </p>
-
-                <div className="space-y-2 p-3.5 rounded-xl bg-black/40 border border-[#232a35] text-[11px] font-mono">
-                  <div className="flex items-start gap-2">
-                    <span className="w-4 h-4 rounded-full bg-[#3ee6d8] text-[#0a0d12] flex items-center justify-center font-bold text-[10px] flex-shrink-0">1</span>
-                    <span>Créez votre compte gratuit sur <a href="https://dashboard.stripe.com/register" target="_blank" rel="noopener noreferrer" className="text-[#3ee6d8] underline font-bold">stripe.com</a> (2 minutes)</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="w-4 h-4 rounded-full bg-[#3ee6d8] text-[#0a0d12] flex items-center justify-center font-bold text-[10px] flex-shrink-0">2</span>
-                    <span>Copiez votre <strong>Clé secrète</strong> (dans <em>Développeurs &gt; Clés API</em>)</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="w-4 h-4 rounded-full bg-[#3ee6d8] text-[#0a0d12] flex items-center justify-center font-bold text-[10px] flex-shrink-0">3</span>
-                    <span>Définissez <code className="text-[#3ee6d8]">STRIPE_SECRET_KEY</code> dans vos variables d'environnement</span>
-                  </div>
+                <div className="flex justify-between text-[#8b949e]">
+                  <span>Destinataire :</span>
+                  <span className="text-[#eef1f4] font-medium">{firstName} {lastName}</span>
                 </div>
-
-                {sumUpLink && (
-                  <div className="pt-2 border-t border-[#232a35] space-y-2">
-                    <span className="text-[11px] text-[#8b949e] block">
-                      En attendant, vous pouvez régler cette commande sur votre lien SumUp :
-                    </span>
-                    <a
-                      href={sumUpLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full py-3 px-4 rounded-xl bg-[#232a35] hover:bg-[#3ee6d8] hover:text-[#0a0d12] font-plate text-xs uppercase tracking-wider font-bold transition-all flex items-center justify-center gap-2"
-                    >
-                      <CreditCard className="w-4 h-4" />
-                      <span>Régler {total.toFixed(2).replace('.', ',')} € sur SumUp</span>
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
+                {email && (
+                  <div className="flex justify-between text-[#8b949e]">
+                    <span>Email de confirmation :</span>
+                    <span className="text-[#3ee6d8] truncate max-w-[200px]">{email}</span>
                   </div>
                 )}
               </div>
-            )}
 
-            {paymentMethod === 'sumup_card' && sumUpLink && (
-              <div className="p-5 rounded-2xl bg-[#151a22] border-2 border-[#3ee6d8]/60 text-xs text-[#eef1f4] max-w-lg mx-auto space-y-4 text-left">
-                <div className="flex items-center justify-between pb-3 border-b border-[#232a35]">
-                  <span className="text-xs font-mono text-[#8b949e] uppercase">
-                    Montant exact de votre commande :
-                  </span>
-                  <span className="font-plate text-2xl font-black text-[#3ee6d8]">
-                    {total.toFixed(2).replace('.', ',')} €
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(total.toFixed(2));
-                    setCopiedAmount(true);
-                    setTimeout(() => setCopiedAmount(false), 2500);
-                  }}
-                  className="w-full py-2.5 px-3 rounded-xl bg-[#10141b] hover:bg-[#1a212c] border border-[#3ee6d8]/40 text-xs font-mono text-[#3ee6d8] flex items-center justify-center gap-2 transition-all cursor-pointer"
-                >
-                  {copiedAmount ? <Check className="w-4 h-4 text-[#3ddc97]" /> : <Copy className="w-4 h-4" />}
-                  <span className="font-bold">
-                    {copiedAmount ? 'Montant copié dans le presse-papier !' : `Copier le montant exact (${total.toFixed(2).replace('.', ',')} €)`}
-                  </span>
-                </button>
-
-                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs space-y-1.5">
-                  <div className="font-bold flex items-center gap-1.5 text-amber-300">
-                    <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                    <span>À renseigner sur SumUp :</span>
-                  </div>
-                  <p className="text-[11px] leading-relaxed">
-                    Sur la page SumUp sécurisée, veuillez <strong>saisir ou coller exactement {total.toFixed(2).replace('.', ',')} €</strong> et indiquer votre référence <strong>{completedOrderRef}</strong>. La préparation de votre colis débutera dès validation de ce montant.
-                  </p>
-                </div>
-
-                <a
-                  href={sumUpLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-[#3ee6d8] to-[#7b61ff] text-[#0a0d12] font-plate text-xs uppercase tracking-wider font-black shadow-lg hover:brightness-110 flex items-center justify-center gap-2 text-center"
-                >
-                  <CreditCard className="w-4 h-4 stroke-[2.5]" />
-                  <span>Accéder à SumUp et payer {total.toFixed(2).replace('.', ',')} €</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
+              <div className="p-3.5 rounded-xl bg-[#3ddc97]/10 border border-[#3ddc97]/30 text-[#3ddc97] text-xs flex items-start gap-2.5">
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <p className="leading-relaxed">
+                  Votre commande a bien été prise en compte et transmise à notre atelier. Nous préparons votre colis avec le plus grand soin.
+                </p>
               </div>
-            )}
+            </div>
 
             <button
               onClick={onClose}

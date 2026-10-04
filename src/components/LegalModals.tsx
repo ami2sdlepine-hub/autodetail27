@@ -78,7 +78,7 @@ export const LegalModals: React.FC<LegalModalsProps> = ({ type, onClose, busines
                 <strong>Article 2 — Prix et TVA :</strong> Les prix sont indiqués en Euros TTC. Conformément à l'article 293 B du CGI, la TVA n'est pas applicable. Les frais de livraison sont offerts dès 100,00 € TTC d'achats (ou 4,95 € pour les paniers inférieurs).
               </p>
               <p>
-                <strong>Article 3 — Commande et Paiement :</strong> Le règlement s'effectue en ligne par carte bancaire via la passerelle de paiement sécurisée SumUp. La commande est validée après confirmation de l'autorisation bancaire.
+                <strong>Article 3 — Commande et Paiement :</strong> Le règlement s'effectue en ligne par carte bancaire (CB, Visa, Mastercard, Apple Pay, Google Pay) via la passerelle de paiement sécurisée Stripe. La commande est validée après confirmation de l'autorisation bancaire.
               </p>
               <p>
                 <strong>Article 4 — Droit de rétractation :</strong> Conformément à l'article L. 221-18 du Code de la consommation, le client dispose d'un délai de 14 jours francs pour exercer son droit de rétractation à compter de la réception de la marchandise, sous réserve que les flacons soient intacts, scellés et non ouverts.
@@ -98,7 +98,7 @@ export const LegalModals: React.FC<LegalModalsProps> = ({ type, onClose, busines
                 AUTODETAIL accorde la plus haute importance à la protection de vos données personnelles. Les données collectées (nom, adresse postale, email, téléphone) sont strictement réservées au traitement de votre commande et à son acheminement.
               </p>
               <p>
-                Aucune donnée n'est revendue ou cédée à des tiers. Les coordonnées de carte bancaire sont traitées directement de manière chiffrée par la passerelle agréée SumUp sans jamais transiter par nos serveurs.
+                Aucune donnée n'est revendue ou cédée à des tiers. Les coordonnées de carte bancaire sont traitées directement de manière chiffrée par la passerelle agréée Stripe (avec certification PCI-DSS niveau 1) sans jamais transiter par nos serveurs.
               </p>
               <p>
                 Conformément au RGPD, vous disposez d'un droit d'accès, de rectification et de suppression de vos données en écrivant à contact@autodetail27.fr.

@@ -118,11 +118,11 @@ export const Header: React.FC<HeaderProps> = ({
                 )}
                 <button
                   onClick={onOpenBusinessSettings}
-                  title="Informations Entreprise, SIRET & Lien SumUp"
+                  title="Informations Entreprise, SIRET & Paramètres"
                   className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-[#151a22] border border-[#3ee6d8]/40 hover:border-[#3ee6d8] text-xs text-[#3ee6d8] flex items-center gap-1.5 transition-colors"
                 >
                   <Building2 className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">SIRET & SumUp</span>
+                  <span className="hidden md:inline">SIRET & Entreprise</span>
                 </button>
               </div>
             )}

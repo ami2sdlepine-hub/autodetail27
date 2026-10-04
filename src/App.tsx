@@ -148,10 +148,7 @@ export default function App() {
     try {
       const saved = localStorage.getItem('autodetail_business_settings');
       return saved
-        ? {
-            ...JSON.parse(saved),
-            sumUpPaymentLink: JSON.parse(saved).sumUpPaymentLink || 'https://pay.sumup.com/b2c/QHQ1ZC1S',
-          }
+        ? JSON.parse(saved)
         : {
             siret: '',
             legalStatus: 'Micro-entreprise (Entreprise Individuelle)',
@@ -160,7 +157,6 @@ export default function App() {
             address: '8 Rue Saint Gilles, 27630 Heubécourt-Haricourt',
             phone: '',
             email: 'contact@autodetail27.fr',
-            sumUpPaymentLink: 'https://pay.sumup.com/b2c/QHQ1ZC1S',
           };
     } catch {
       return {
@@ -171,7 +167,6 @@ export default function App() {
         address: '8 Rue Saint Gilles, 27630 Heubécourt-Haricourt',
         phone: '',
         email: 'contact@autodetail27.fr',
-        sumUpPaymentLink: 'https://pay.sumup.com/b2c/QHQ1ZC1S',
       };
     }
   });
@@ -335,7 +330,7 @@ export default function App() {
     setDoc(docRef, newSettings, { merge: true }).catch((err) => {
       console.warn('Sync business settings notice:', err);
     });
-    showToast('Coordonnées & Lien SumUp enregistrés !');
+    showToast('Coordonnées de l\'entreprise enregistrées !');
   };
 
   const handleToggleHideProduct = (id: string) => {
@@ -891,7 +886,7 @@ export default function App() {
         }}
       />
 
-      {/* Real Checkout Modal (Customer info, Delivery/Pickup RDV, SumUp / Onsite payment) */}
+      {/* Real Checkout Modal (Customer info, Delivery/Pickup RDV, Stripe / Onsite payment) */}
       <CheckoutModal
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
@@ -900,7 +895,6 @@ export default function App() {
         deliveryCarrier={checkoutDeliveryMode}
         shippingCost={shippingCost}
         freeShippingThreshold={freeShippingThreshold}
-        sumUpLink={businessSettings.sumUpPaymentLink}
         onOrderCompleted={() => {
           handleClearCart();
           showToast('Commande confirmée avec succès !');
@@ -998,7 +992,7 @@ export default function App() {
         }}
       />
 
-      {/* Business Settings & SumUp Modal */}
+      {/* Business Settings Modal */}
       <BusinessSettingsModal
         isOpen={isBusinessSettingsOpen}
         onClose={() => setIsBusinessSettingsOpen(false)}
