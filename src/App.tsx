@@ -75,7 +75,14 @@ export default function App() {
   const [customPrices, setCustomPrices] = useState<{ [productId: string]: number }>(() => {
     try {
       const saved = localStorage.getItem('autodetail_custom_prices');
-      return saved ? JSON.parse(saved) : {};
+      const parsed = saved ? JSON.parse(saved) : {};
+      if (parsed.SB === 85 || parsed.SB === 75 || parsed.SB === 76) {
+        parsed.SB = 80.0;
+        try {
+          localStorage.setItem('autodetail_custom_prices', JSON.stringify(parsed));
+        } catch {}
+      }
+      return parsed;
     } catch {
       return {};
     }
@@ -85,7 +92,18 @@ export default function App() {
   const [customPhotos, setCustomPhotos] = useState<{ [productId: string]: string }>(() => {
     try {
       const saved = localStorage.getItem('autodetail_custom_photos');
-      return saved ? JSON.parse(saved) : {};
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const cleaned: { [id: string]: string } = {};
+        Object.entries(parsed).forEach(([k, v]) => {
+          if (typeof v === 'string' && !v.startsWith('data:image')) {
+            cleaned[k] = v;
+          }
+        });
+        localStorage.setItem('autodetail_custom_photos', JSON.stringify(cleaned));
+        return cleaned;
+      }
+      return {};
     } catch {
       return {};
     }
@@ -115,7 +133,20 @@ export default function App() {
   const [productOverrides, setProductOverrides] = useState<{ [id: string]: Partial<Product> }>(() => {
     try {
       const saved = localStorage.getItem('autodetail_product_overrides');
-      return saved ? JSON.parse(saved) : {};
+      const parsed = saved ? JSON.parse(saved) : {};
+      if (parsed.SB && (parsed.SB.price === 85 || parsed.SB.price === 75 || parsed.SB.price === 76)) {
+        parsed.SB.price = 80.0;
+      }
+      // Purge any legacy base64 images from overrides
+      Object.keys(parsed).forEach((k) => {
+        if (parsed[k]?.image && typeof parsed[k].image === 'string' && parsed[k].image.startsWith('data:image')) {
+          delete parsed[k].image;
+        }
+      });
+      try {
+        localStorage.setItem('autodetail_product_overrides', JSON.stringify(parsed));
+      } catch {}
+      return parsed;
     } catch {
       return {};
     }
@@ -231,11 +262,21 @@ export default function App() {
   // All products base with overrides applied
   const allRawProducts = [...CATALOG, ...extraProducts].map((p) => {
     const override = productOverrides[p.id] || {};
+    const catalogItem = CATALOG.find((catP) => catP.id === p.id);
+
+    // Official products always use their genuine bundled high-res visual
+    let finalImage = catalogItem ? catalogItem.image : p.image;
+    if (customPhotos[p.id] && !customPhotos[p.id].startsWith('data:image')) {
+      finalImage = customPhotos[p.id];
+    } else if (override.image && !override.image.startsWith('data:image')) {
+      finalImage = override.image;
+    }
+
     return {
       ...p,
       ...override,
       price: customPrices[p.id] ?? override.price ?? p.price,
-      image: customPhotos[p.id] || override.image || p.image,
+      image: finalImage,
     };
   });
 
@@ -266,7 +307,10 @@ export default function App() {
 
         cloudProducts.forEach((p: any) => {
           if (p.price) cloudPrices[p.id] = p.price;
-          if (p.image) cloudPhotos[p.id] = p.image;
+          // Ignore heavy legacy base64 strings so they never overwrite official photos
+          if (p.image && !p.image.startsWith('data:image')) {
+            cloudPhotos[p.id] = p.image;
+          }
           if (p.isHidden) cloudHidden.push(p.id);
           if (!CATALOG.some((catP) => catP.id === p.id)) {
             cloudExtra.push(p);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CATALOG, Product } from '../data/products';
 import { X, Save, RefreshCw, Check, Percent, Tag, Truck } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
@@ -35,6 +35,18 @@ export const PriceEditorModal: React.FC<PriceEditorModalProps> = ({
   const [shipping, setShipping] = useState<string>(shippingCost.toFixed(2));
   const [threshold, setThreshold] = useState<string>(freeShippingThreshold.toFixed(2));
   const [discountPercent, setDiscountPercent] = useState<string>('');
+
+  useEffect(() => {
+    if (isOpen) {
+      const init: { [productId: string]: string } = {};
+      CATALOG.forEach((p) => {
+        init[p.id] = (customPrices[p.id] ?? p.price).toFixed(2);
+      });
+      setPrices(init);
+      setShipping(shippingCost.toFixed(2));
+      setThreshold(freeShippingThreshold.toFixed(2));
+    }
+  }, [isOpen, customPrices, shippingCost, freeShippingThreshold]);
 
   if (!isOpen) return null;
 

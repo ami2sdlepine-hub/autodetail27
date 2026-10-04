@@ -159,7 +159,7 @@ export const CATALOG: Product[] = [
     name: 'Sacoche Bulbee (Kit complet)',
     volume: 'Kit complet',
     refNumber: 'KIT',
-    price: 75.00,
+    price: 80.00,
     costPrice: 37.80,
     stockStatus: 'backorder',
     badge: 'Le kit complet',
