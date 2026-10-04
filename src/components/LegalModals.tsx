@@ -58,7 +58,7 @@ export const LegalModals: React.FC<LegalModalsProps> = ({ type, onClose, busines
                 <strong>Identifiant légal & fiscal :</strong> {siret}. TVA non applicable, art. 293 B du CGI.
               </p>
               <p>
-                <strong>Hébergement :</strong> Google Cloud Platform (Europe-West) & OVHcloud.
+                <strong>Hébergement :</strong> Google Cloud Platform (Région Europe-West).
               </p>
             </div>
           </div>
