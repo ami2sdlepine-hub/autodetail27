@@ -239,8 +239,8 @@ export default function App() {
     return {
       ...p,
       ...override,
-      price: override.price ?? customPrices[p.id] ?? p.price,
-      image: override.image || customPhotos[p.id] || p.image,
+      price: customPrices[p.id] ?? override.price ?? p.price,
+      image: customPhotos[p.id] || override.image || p.image,
     };
   });
 
@@ -433,6 +433,21 @@ export default function App() {
       console.error(e);
     }
     showToast('Catalogue 17 articles officiel rétabli');
+  };
+
+  const handleUpdateSinglePhoto = (productId: string, imageBase64: string) => {
+    const updated = { ...customPhotos, [productId]: imageBase64 };
+    setCustomPhotos(updated);
+    try {
+      localStorage.setItem('autodetail_custom_photos', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+    const prod = allRawProducts.find((p) => p.id === productId);
+    if (prod) {
+      updateProductInCloud({ ...prod, image: imageBase64 }).catch(() => {});
+    }
+    showToast('Photo mise à jour pour ce flacon !');
   };
 
   const handleUpdatePhotos = (newPhotos: { [id: string]: string }) => {
@@ -808,6 +823,7 @@ export default function App() {
             setPackManagerTab('trilogy');
             setIsPackManagerOpen(true);
           }}
+          onUpdateProductPhoto={handleUpdateSinglePhoto}
         />
 
         {/* 6. Comparateur Avant / Après interactif */}

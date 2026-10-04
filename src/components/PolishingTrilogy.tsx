@@ -1,7 +1,7 @@
 import React from 'react';
 import { Product } from '../data/products';
 import { TrilogyConfig, DEFAULT_TRILOGY_CONFIG } from '../data/trilogy';
-import { Sparkles, Layers, ShieldCheck, Plus, ArrowRight, Eye, EyeOff, Settings } from 'lucide-react';
+import { Sparkles, Layers, ShieldCheck, Plus, ArrowRight, Eye, EyeOff, Settings, Camera } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
 
 interface PolishingTrilogyProps {
@@ -13,6 +13,7 @@ interface PolishingTrilogyProps {
   isAdmin?: boolean;
   onToggleVisible?: (visible: boolean) => void;
   onOpenEdit?: () => void;
+  onUpdateProductPhoto?: (productId: string, image: string) => void;
 }
 
 export const PolishingTrilogy: React.FC<PolishingTrilogyProps> = ({
@@ -24,6 +25,7 @@ export const PolishingTrilogy: React.FC<PolishingTrilogyProps> = ({
   isAdmin,
   onToggleVisible,
   onOpenEdit,
+  onUpdateProductPhoto,
 }) => {
   // If hidden and not admin, do not render at all
   if (!isVisible && !isAdmin) return null;
@@ -144,14 +146,40 @@ export const PolishingTrilogy: React.FC<PolishingTrilogyProps> = ({
                 </div>
 
                 <div
-                  onClick={() => onOpenDetails(prod)}
-                  className="w-full aspect-square rounded-2xl img-visu p-4 flex items-center justify-center border border-white/20 mb-4 cursor-pointer group overflow-hidden"
+                  className="relative w-full aspect-square rounded-2xl img-visu p-4 flex items-center justify-center border border-white/20 mb-4 group overflow-hidden"
                 >
                   <img
-                    src={prod.image}
-                    alt={prod.name}
-                    className="max-h-full max-w-full object-contain filter drop-shadow group-hover:scale-105 transition-transform duration-300"
+                    onClick={() => onOpenDetails(prod)}
+                    src={st.image || prod.image}
+                    alt={st.title}
+                    className="max-h-full max-w-full object-contain filter drop-shadow group-hover:scale-105 transition-transform duration-300 cursor-pointer"
                   />
+
+                  {isAdmin && onUpdateProductPhoto && (
+                    <label
+                      title="Changer la photo de ce flacon"
+                      className="absolute bottom-2 right-2 p-2 rounded-xl bg-[#10141b]/90 hover:bg-[#3ee6d8] border border-[#232a35] hover:border-[#3ee6d8] text-[#3ee6d8] hover:text-[#0a0d12] shadow-lg transition-all cursor-pointer z-10"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                              const b64 = ev.target?.result as string;
+                              if (b64) onUpdateProductPhoto(prod.id, b64);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                      <Camera className="w-4 h-4" />
+                    </label>
+                  )}
                 </div>
 
                 <h3 className="font-plate text-xl text-[#eef1f4] mb-2">{st.title}</h3>

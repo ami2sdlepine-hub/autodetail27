@@ -5,6 +5,7 @@ export interface TrilogyStep {
   tag: string;
   color: string;
   desc: string;
+  image?: string;
 }
 
 export interface TrilogyConfig {

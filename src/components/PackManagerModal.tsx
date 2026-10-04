@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Sparkles, Layers, Eye, EyeOff, Plus, Trash2, Edit3, Check, SlidersHorizontal, Package, ShieldCheck, ChevronDown, ChevronUp, Wrench } from 'lucide-react';
+import { X, Sparkles, Layers, Eye, EyeOff, Plus, Trash2, Edit3, Check, SlidersHorizontal, Package, ShieldCheck, ChevronDown, ChevronUp, Wrench, Upload, Camera } from 'lucide-react';
 import { DetailingPack } from '../data/packs';
 import { Product } from '../data/products';
 import { TrilogyConfig, DEFAULT_TRILOGY_CONFIG, TrilogyStep } from '../data/trilogy';
@@ -449,22 +449,47 @@ export const PackManagerModal: React.FC<PackManagerModalProps> = ({
                           </div>
 
                           {currentProd && (
-                            <div className="p-2 rounded-xl bg-black/40 border border-[#232a35] flex items-center gap-2.5">
-                              <div className="w-10 h-10 rounded-lg bg-black/60 p-1 flex items-center justify-center flex-shrink-0">
-                                <img
-                                  src={currentProd.image}
-                                  alt={currentProd.name}
-                                  className="max-h-full max-w-full object-contain"
+                            <div className="p-2.5 rounded-xl bg-black/40 border border-[#232a35] flex items-center justify-between gap-2.5">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-12 h-12 rounded-lg bg-black/60 p-1 flex items-center justify-center flex-shrink-0 border border-white/10 overflow-hidden">
+                                  <img
+                                    src={st.image || currentProd.image}
+                                    alt={currentProd.name}
+                                    className="max-h-full max-w-full object-contain"
+                                  />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <span className="text-[11px] font-plate text-[#eef1f4] block truncate">
+                                    {currentProd.name}
+                                  </span>
+                                  <span className="text-[10px] font-mono text-[#3ee6d8]">
+                                    {currentProd.price.toFixed(2).replace('.', ',')} €
+                                  </span>
+                                </div>
+                              </div>
+
+                              <label className="cursor-pointer px-2.5 py-1.5 rounded-lg bg-[#232a35] hover:bg-[#3ee6d8] hover:text-[#0a0d12] text-[10px] font-plate uppercase flex items-center gap-1 transition-all flex-shrink-0">
+                                <Camera className="w-3 h-3" />
+                                <span>Photo</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      const reader = new FileReader();
+                                      reader.onload = (ev) => {
+                                        const res = ev.target?.result as string;
+                                        if (res) {
+                                          updateTrilogyStep(idx, { image: res });
+                                        }
+                                      };
+                                      reader.readAsDataURL(file);
+                                    }
+                                  }}
                                 />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <span className="text-[11px] font-plate text-[#eef1f4] block truncate">
-                                  {currentProd.name}
-                                </span>
-                                <span className="text-[10px] font-mono text-[#3ee6d8]">
-                                  {currentProd.price.toFixed(2).replace('.', ',')} €
-                                </span>
-                              </div>
+                              </label>
                             </div>
                           )}
 
