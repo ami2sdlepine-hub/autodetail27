@@ -100,6 +100,7 @@ export interface CloudDisplaySettings {
   showPacksSection?: boolean;
   hiddenProductIds?: string[];
   packs?: any[];
+  trilogyConfig?: any;
   customPhotos?: { [productId: string]: string };
 }
 
@@ -127,10 +128,52 @@ export function subscribeToDisplaySettings(callback: (settings: CloudDisplaySett
   );
 }
 
+// Global shipping settings interface
+export interface GlobalSettings {
+  shippingCost: number;
+  freeShippingThreshold: number;
+}
+
 // Save store settings in Cloud Firestore
 export async function saveSettingsToCloud(shippingCost: number, freeShippingThreshold: number): Promise<void> {
   const docRef = doc(db, 'settings', 'global');
   await setDoc(docRef, { shippingCost, freeShippingThreshold }, { merge: true });
+}
+
+// Subscribe to global store settings (shipping, threshold) in Cloud Firestore
+export function subscribeToGlobalSettings(callback: (settings: GlobalSettings | null) => void) {
+  const docRef = doc(db, 'settings', 'global');
+  return onSnapshot(
+    docRef,
+    (snapshot) => {
+      if (snapshot.exists()) {
+        callback(snapshot.data() as GlobalSettings);
+      } else {
+        callback(null);
+      }
+    },
+    (err) => {
+      console.warn('Global settings subscription notice:', err.message);
+    }
+  );
+}
+
+// Subscribe to business settings in Cloud Firestore
+export function subscribeToBusinessSettings(callback: (settings: any | null) => void) {
+  const docRef = doc(db, 'settings', 'business');
+  return onSnapshot(
+    docRef,
+    (snapshot) => {
+      if (snapshot.exists()) {
+        callback(snapshot.data());
+      } else {
+        callback(null);
+      }
+    },
+    (err) => {
+      console.warn('Business settings subscription notice:', err.message);
+    }
+  );
 }
 
 // Firebase Auth Login Email/Password

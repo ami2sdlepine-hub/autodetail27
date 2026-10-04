@@ -35,6 +35,8 @@ import {
   subscribeToAuth,
   subscribeToDisplaySettings,
   saveDisplaySettingsToCloud,
+  subscribeToGlobalSettings,
+  subscribeToBusinessSettings,
   updateProductInCloud,
   addProductToCloud,
   toggleProductVisibilityInCloud,
@@ -358,6 +360,12 @@ export default function App() {
             localStorage.setItem('autodetail_packs', JSON.stringify(cloudDisplay.packs));
           } catch {}
         }
+        if (cloudDisplay.trilogyConfig) {
+          setTrilogyConfig(cloudDisplay.trilogyConfig);
+          try {
+            localStorage.setItem('autodetail_trilogy_config', JSON.stringify(cloudDisplay.trilogyConfig));
+          } catch {}
+        }
         if (cloudDisplay.customPhotos && Object.keys(cloudDisplay.customPhotos).length > 0) {
           setCustomPhotos((prev) => {
             const merged = { ...prev, ...cloudDisplay.customPhotos };
@@ -370,10 +378,41 @@ export default function App() {
       }
     });
 
+    const unsubGlobal = subscribeToGlobalSettings((cloudGlobal) => {
+      if (cloudGlobal) {
+        if (cloudGlobal.shippingCost !== undefined) {
+          setShippingCost(cloudGlobal.shippingCost);
+          try {
+            localStorage.setItem('autodetail_shipping_cost', cloudGlobal.shippingCost.toString());
+          } catch {}
+        }
+        if (cloudGlobal.freeShippingThreshold !== undefined) {
+          setFreeShippingThreshold(cloudGlobal.freeShippingThreshold);
+          try {
+            localStorage.setItem('autodetail_free_shipping_threshold', cloudGlobal.freeShippingThreshold.toString());
+          } catch {}
+        }
+      }
+    });
+
+    const unsubBusiness = subscribeToBusinessSettings((cloudBusiness) => {
+      if (cloudBusiness) {
+        setBusinessSettings((prev) => {
+          const merged = { ...prev, ...cloudBusiness };
+          try {
+            localStorage.setItem('autodetail_business_settings', JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
+      }
+    });
+
     return () => {
       unsubAuth();
       unsubProducts();
       unsubDisplay();
+      unsubGlobal();
+      unsubBusiness();
     };
   }, []);
 
@@ -623,7 +662,8 @@ export default function App() {
     try {
       localStorage.setItem('autodetail_packs', JSON.stringify(newPacks));
     } catch {}
-    saveDisplaySettingsToCloud({ packs: newPacks }).catch(() => {});
+    const hasVisible = newPacks.some((p) => !p.isHidden);
+    saveDisplaySettingsToCloud({ packs: newPacks, showPacksSection: hasVisible }).catch(() => {});
     showToast('Packs et compositions mis à jour avec succès !');
   };
 
@@ -641,6 +681,7 @@ export default function App() {
     try {
       localStorage.setItem('autodetail_trilogy_config', JSON.stringify(newConfig));
     } catch {}
+    saveDisplaySettingsToCloud({ trilogyConfig: newConfig }).catch(() => {});
     showToast('Configuration de la Trilogie Polissage enregistrée !');
   };
 
@@ -975,7 +1016,7 @@ export default function App() {
         </section>
 
         {/* 4. Rituels de soin recommandés (Packs & Duos) */}
-        {(showPacksSection || isAdmin) && (
+        {(showPacksSection || isAdmin || packs.some((p) => !p.isHidden)) && (
           <DetailingRoutines
             packs={packs}
             allProducts={allRawProducts}
