@@ -299,6 +299,26 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get('payment');
+    const orderRef = params.get('order_ref');
+    if (payment === 'success' && orderRef) {
+      showToast(`🎉 Paiement validé par Stripe ! Votre commande ${orderRef} est confirmée.`);
+      soundManager.playCashRegister();
+      setCart({});
+      try {
+        localStorage.removeItem('autodetail_cart');
+      } catch (e) {
+        console.error(e);
+      }
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (payment === 'cancelled') {
+      showToast('Paiement annulé. Vos articles sont toujours dans votre panier.');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);

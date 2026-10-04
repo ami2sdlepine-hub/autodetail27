@@ -10,9 +10,9 @@ import ginFreshImg from '../assets/images/bulbee_gin_fresh_1791102885611.jpg';
 import bubbleFreshImg from '../assets/images/bulbee_bubble_fresh_1791102850461.jpg';
 import tireShineImg from '../assets/images/bulbee_tire_shine_real_1790974796646.jpg';
 import wheelReactImg from '../assets/images/bulbee_wheel_react_real_1790974840669.jpg';
-import cutImg from '../assets/images/bulbee_cut_500ml_1791102725323.jpg';
-import correctImg from '../assets/images/bulbee_correct_500ml_1791102741762.jpg';
-import waxImg from '../assets/images/bulbee_wax_500ml_1791102759227.jpg';
+import cutImg from '../assets/images/bulbee_cut_real_1791116517194.jpg';
+import correctImg from '../assets/images/bulbee_correct_real_1791116536517.jpg';
+import waxImg from '../assets/images/bulbee_wax_real_1791116550540.jpg';
 import bugCleanerImg from '../assets/images/bulbee_bug_cleaner_1791102780899.jpg';
 import instantShineImg from '../assets/images/bulbee_instant_shine_1791102796128.jpg';
 
@@ -359,17 +359,17 @@ export const CATALOG: Product[] = [
   {
     id: 'CUT500',
     code: 'CUT500',
-    name: 'Cut',
+    name: 'Polish abrasif Cut',
     volume: '500 ml',
     refNumber: '103',
     price: 24.95,
     costPrice: 11.23,
     stockStatus: 'backorder',
-    badge: 'Correction lourde',
+    badge: 'Étape 1 • Abrasif Fort',
     category: 'polish_cires',
     colorAccent: '#ef4444',
-    usage: 'Pâte abrasive de polissage intensif — élimine rayures profondes & oxydation P1500',
-    detail: 'Compound de coupe professionnel à technologie d\'abrasifs dégressifs. Corrige les microrayures sévères, les hologrammes marqués et les traces d\'oxydation profonde sans poussière excessive.',
+    usage: 'Polish de correction (étape 1) — polish abrasif fort pour rayures franches & défauts sévères',
+    detail: 'Polish abrasif fort haute performance (formule n° 103). Élimine les rayures marquées, l\'oxydation sévère et prépare la surface avant la passe de finition anti-hologrammes.',
     conseils: [
       'Utiliser sur polisseuse orbitale ou rotative avec un pad en mousse dure ou laine.',
       'Travailler par zones de 40x40 cm à vitesse moyenne jusqu\'à transparence du film.',
@@ -382,21 +382,21 @@ export const CATALOG: Product[] = [
   {
     id: 'CORRECT500',
     code: 'CORRECT500',
-    name: 'Correct',
+    name: 'Polish Correct',
     volume: '500 ml',
     refNumber: '104',
     price: 23.50,
     costPrice: 10.42,
     stockStatus: 'backorder',
-    badge: 'Finition zéro reflet',
+    badge: 'Étape 2 • Anti-Hologrammes',
     category: 'polish_cires',
     colorAccent: '#f59e0b',
-    usage: 'Polish de finition & brillant ultime — supprime hologrammes & affine le vernis',
-    detail: 'Polish de lustrage moyen et finition. Supprime les voiles de polissage laissés par le Cut pour révéler une transparence absolue et une profondeur de teinte sans défaut sous les projecteurs LED.',
+    usage: 'Polish anti-hologrammes (étape 2) — polish abrasif fin & finition brillante miroir',
+    detail: 'Polish de finition anti-hologrammes ultra-fin (formule n° 104). Supprime les voiles de polissage et micro-hologrammes pour une clarté miroir absolue sans reflet.',
     conseils: [
       'Appliquer avec un pad mousse intermédiaire ou souple.',
       'Faire monter la vitesse de la polisseuse pour décomposer les micro-grains.',
-      'Parfait en étape 2 de polissage avant la pose de la cire de protection Wax.'
+      'Parfait en étape 2 de polissage avant la pose de la cire de finition Wax.'
     ],
     image: correctImg,
   },
@@ -405,17 +405,17 @@ export const CATALOG: Product[] = [
   {
     id: 'WAX500',
     code: 'WAX500',
-    name: 'Wax',
+    name: 'Cire de finition Wax',
     volume: '500 ml',
     refNumber: '105',
     price: 26.90,
     costPrice: 11.95,
     stockStatus: 'backorder',
-    badge: 'Protection Hybride',
+    badge: 'Étape 3 • Finition Brillante',
     category: 'polish_cires',
     colorAccent: '#10b981',
-    usage: 'Cire liquide protectrice hybride carnauba + polymères synthétiques — 6 mois',
-    detail: 'Cire de protection hybride conjuguant la chaleur et le reflet mouillé de la Carnauba naturelle brésilienne à la durabilité des polymères synthétiques. Protège des fientes, des UV et du sel routier.',
+    usage: 'Cire de finition brillante (étape 3) — protection durable & brillance showroom',
+    detail: 'Cire liquide de finition brillante haute protection (formule n° 105). Dépose un film déperlant protecteur anti-UV qui scelle l\'éclat showroom de la carrosserie pour plusieurs mois.',
     conseils: [
       'Appliquer en couche très fine et uniforme avec un tampon mousse doux.',
       'Laisser sécher (haze) 10 à 15 minutes selon l\'hygrométrie ambiante.',
