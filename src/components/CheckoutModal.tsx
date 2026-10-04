@@ -196,17 +196,95 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           }),
         });
 
+        if (!res.ok) {
+          throw new Error(`HTTP_${res.status}`);
+        }
+
         const data = await res.json();
         if (data.url) {
+          try {
+            const docRef = doc(db, 'orders', orderRef);
+            await setDoc(docRef, { ...orderData, status: 'pending_stripe_redirect' });
+          } catch (err) {
+            console.warn('Order saved locally:', err);
+          }
+
+          pushOrderToAppsScript({
+            customerName: `${firstName} ${lastName}`.trim(),
+            customerEmail: email,
+            customerPhone: phone,
+            deliveryMode: activeOption.name,
+            shippingAddress: `${address}, ${postalCode} ${city}${relayPointPreference ? ' (Point Relais : ' + relayPointPreference + ')' : ''}`,
+            noteClient: relayPointPreference || '',
+            subtotal,
+            shippingCost: effectiveShipping,
+            total,
+            items: cartEntries.map((e) => ({
+              code: e.product.code || e.product.id,
+              name: e.product.name,
+              quantity: e.quantity,
+              price: e.product.price,
+            })),
+          }).catch((e) => console.warn(e));
+
           soundManager.playCashRegister();
           onOrderCompleted();
           window.location.href = data.url;
           return;
         }
+
+        if (data.needsConfig) {
+          setError(
+            'Le terminal de paiement Stripe est en attente de configuration de la clé secrète (STRIPE_SECRET_KEY dans les variables d\'environnement Vercel). Aucune somme n\'a été débitée. Vous pouvez opter pour le retrait à l\'atelier ou nous contacter.'
+          );
+          setLoading(false);
+          return;
+        }
+
+        throw new Error(data.error || 'Erreur lors de la création de la session Stripe');
       } catch (err) {
-        console.warn('Stripe session creation notice:', err);
+        console.error('Stripe session creation error:', err);
+        setError(
+          'Le paiement en ligne par carte bancaire est temporairement indisponible (la clé Stripe doit être ajoutée sur Vercel). Aucune somme n\'a été prélevée. Veuillez choisir le retrait à l\'atelier ou contacter Pauline.'
+        );
+        setLoading(false);
+        return;
       }
     }
+
+    // Only if paymentMethod === 'onsite_pickup' (Retrait Atelier)
+    try {
+      const docRef = doc(db, 'orders', orderRef);
+      await setDoc(docRef, orderData);
+    } catch (err) {
+      console.warn('Order saved locally (Firestore offline notice):', err);
+    }
+
+    pushOrderToAppsScript({
+      customerName: `${firstName} ${lastName}`.trim(),
+      customerEmail: email,
+      customerPhone: phone,
+      deliveryMode: 'Retrait Atelier sur RDV (27)',
+      shippingAddress: 'Retrait sur RDV à l\'atelier (Heubécourt-Haricourt 27)',
+      noteClient: pickupDateSlot || '',
+      subtotal,
+      shippingCost: 0,
+      total,
+      items: cartEntries.map((e) => ({
+        code: e.product.code || e.product.id,
+        name: e.product.name,
+        quantity: e.quantity,
+        price: e.product.price,
+      })),
+    })
+      .then((res) => {
+        if (res && res.numero) {
+          setCompletedOrderRef(res.numero);
+        }
+      })
+      .catch((err) => {
+        console.warn('Apps Script sync notice:', err);
+      });
 
     soundManager.playCashRegister();
     setLoading(false);
@@ -569,6 +647,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </div>
 
               {/* Submit CTA */}
+              {error && (
+                <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-400" />
+                  <span>{error}</span>
+                </div>
+              )}
+
               <button
                 type="submit"
                 disabled={loading}
@@ -576,8 +661,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               >
                 <span>
                   {loading
-                    ? 'Enregistrement de la commande...'
-                    : `Confirmer ma commande (${total.toFixed(2).replace('.', ',')} €)`}
+                    ? 'Initialisation de la commande...'
+                    : paymentMethod === 'onsite_pickup'
+                    ? `Réserver ma commande (${total.toFixed(2).replace('.', ',')} € à régler sur place)`
+                    : `Payer par Carte Bancaire (${total.toFixed(2).replace('.', ',')} €)`}
                 </span>
                 <ArrowRight className="w-4 h-4 stroke-[3]" />
               </button>
@@ -585,16 +672,24 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           </div>
         ) : (
           <div className="text-center py-8 space-y-5">
-            <div className="w-16 h-16 rounded-full bg-[#3ddc97]/20 border border-[#3ddc97] text-[#3ddc97] mx-auto flex items-center justify-center">
+            <div className={`w-16 h-16 rounded-full mx-auto flex items-center justify-center ${
+              paymentMethod === 'onsite_pickup'
+                ? 'bg-[#3ee6d8]/20 border border-[#3ee6d8] text-[#3ee6d8]'
+                : 'bg-[#3ddc97]/20 border border-[#3ddc97] text-[#3ddc97]'
+            }`}>
               <CheckCircle2 className="w-8 h-8" />
             </div>
 
             <div className="space-y-2">
               <span className="text-xs font-mono text-[#3ee6d8] uppercase tracking-wider">
-                Commande Validée avec Succès
+                {paymentMethod === 'onsite_pickup'
+                  ? 'Réservation confirmée (Règlement sur place)'
+                  : 'Paiement Sécurisé Confirmé'}
               </span>
               <h3 className="font-plate text-2xl sm:text-3xl text-[#eef1f4]">
-                Merci pour votre commande !
+                {paymentMethod === 'onsite_pickup'
+                  ? 'Commande réservée avec succès !'
+                  : 'Merci pour votre commande !'}
               </h3>
               <p className="text-xs sm:text-sm text-[#8b949e] max-w-md mx-auto">
                 Référence : <strong className="text-[#3ee6d8] font-mono">{completedOrderRef}</strong>. Un email récapitulatif vient d'être généré.
@@ -604,7 +699,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <div className="p-6 rounded-2xl bg-[#151a22] border border-[#232a35] text-xs text-[#eef1f4] max-w-md mx-auto space-y-4 text-left">
               <div className="flex items-center justify-between pb-3 border-b border-[#232a35]">
                 <span className="text-xs font-mono text-[#8b949e] uppercase">
-                  Montant de la commande :
+                  {paymentMethod === 'onsite_pickup' ? 'À régler sur place au retrait :' : 'Montant total réglé :'}
                 </span>
                 <span className="font-plate text-2xl font-black text-[#3ee6d8]">
                   {total.toFixed(2).replace('.', ',')} €
@@ -616,6 +711,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <span>Mode de livraison :</span>
                   <span className="text-[#eef1f4] font-medium">{activeOption.name}</span>
                 </div>
+                {paymentMethod === 'onsite_pickup' && (
+                  <div className="flex justify-between text-[#8b949e]">
+                    <span>Règlement sur place :</span>
+                    <span className="text-[#3ee6d8] font-medium">Carte Bancaire ou Espèces</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-[#8b949e]">
                   <span>Destinataire :</span>
                   <span className="text-[#eef1f4] font-medium">{firstName} {lastName}</span>
@@ -628,10 +729,20 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 )}
               </div>
 
-              <div className="p-3.5 rounded-xl bg-[#3ddc97]/10 border border-[#3ddc97]/30 text-[#3ddc97] text-xs flex items-start gap-2.5">
-                <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <div className={`p-3.5 rounded-xl border text-xs flex items-start gap-2.5 ${
+                paymentMethod === 'onsite_pickup'
+                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                  : 'bg-[#3ddc97]/10 border-[#3ddc97]/30 text-[#3ddc97]'
+              }`}>
+                {paymentMethod === 'onsite_pickup' ? (
+                  <Calendar className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                )}
                 <p className="leading-relaxed">
-                  Votre commande a bien été prise en compte et transmise à notre atelier. Nous préparons votre colis avec le plus grand soin.
+                  {paymentMethod === 'onsite_pickup'
+                    ? 'Vos produits sont réservés à l\'atelier (8 Rue Saint Gilles, 27630 Heubécourt-Haricourt). Nous vous contacterons pour fixer votre heure de passage.'
+                    : 'Votre commande a bien été enregistrée et transmise à notre atelier. Nous préparons votre colis avec le plus grand soin.'}
                 </p>
               </div>
             </div>
