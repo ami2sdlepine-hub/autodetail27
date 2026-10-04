@@ -60,7 +60,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [city, setCity] = useState<string>('');
   const [relayPointPreference, setRelayPointPreference] = useState<string>('');
   const [pickupDateSlot, setPickupDateSlot] = useState<string>('');
-  const [paymentMethod, setPaymentMethod] = useState<'stripe_card' | 'onsite_pickup'>('stripe_card');
+  const [paymentMethod, setPaymentMethod] = useState<'stripe_card' | 'onsite_pickup'>(
+    deliveryCarrier === 'pickup' ? 'onsite_pickup' : 'stripe_card'
+  );
   const [completedOrderRef, setCompletedOrderRef] = useState<string>('');
 
   if (!isOpen) return null;
@@ -235,7 +237,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
         if (data.needsConfig) {
           setError(
-            'Le terminal de paiement Stripe est en attente de configuration de la clé secrète (STRIPE_SECRET_KEY dans les variables d\'environnement Vercel). Aucune somme n\'a été débitée. Vous pouvez opter pour le retrait à l\'atelier ou nous contacter.'
+            'Le paiement par Carte Bancaire en ligne est en cours d\'activation. Aucune somme n\'a été prélevée. Pour finaliser votre commande dès maintenant, veuillez sélectionner « Règlement sur place au retrait » ci-dessus ou contacter Pauline au 06 14 06 44 48.'
           );
           setLoading(false);
           return;
@@ -245,7 +247,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       } catch (err) {
         console.error('Stripe session creation error:', err);
         setError(
-          'Le paiement en ligne par carte bancaire est temporairement indisponible (la clé Stripe doit être ajoutée sur Vercel). Aucune somme n\'a été prélevée. Veuillez choisir le retrait à l\'atelier ou contacter Pauline.'
+          'Le paiement en ligne par carte bancaire est temporairement indisponible. Aucune somme n\'a été prélevée. Veuillez sélectionner « Règlement sur place au retrait » ci-dessus ou nous contacter au 06 14 06 44 48.'
         );
         setLoading(false);
         return;
@@ -351,6 +353,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         onClick={() => {
                           soundManager.playClick();
                           setCarrier(opt.id);
+                          setError(null);
+                          if (opt.id === 'pickup') {
+                            setPaymentMethod('onsite_pickup');
+                          } else if (paymentMethod === 'onsite_pickup') {
+                            setPaymentMethod('stripe_card');
+                          }
                         }}
                         className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
                           isSelected

@@ -14,15 +14,19 @@ const PORT = 3000;
 
 app.use(express.json());
 
-// Initialize Stripe if key is present in environment
+// Initialize Stripe if key is present in environment variables
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
-const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
+const stripe = stripeSecretKey
+  ? new Stripe(stripeSecretKey, {
+      apiVersion: '2023-10-16' as any,
+    })
+  : null;
 
 // API endpoint to get Stripe configuration status (safe, no secret exposed)
 app.get('/api/stripe-status', (_req, res) => {
   res.json({
-    configured: Boolean(stripeSecretKey && stripeSecretKey.startsWith('sk_')),
-    mode: stripeSecretKey.startsWith('sk_live_') ? 'live' : stripeSecretKey.startsWith('sk_test_') ? 'test' : 'none',
+    configured: Boolean(stripeSecretKey),
+    mode: stripeSecretKey.includes('_live_') ? 'live' : stripeSecretKey.includes('_test_') ? 'test' : 'none',
   });
 });
 
@@ -34,7 +38,7 @@ app.post('/api/create-checkout-session', async (req, res) => {
     if (!stripe) {
       return res.status(200).json({
         needsConfig: true,
-        message: 'Stripe secret key not configured yet.',
+        message: 'STRIPE_SECRET_KEY non configuré sur le serveur.',
       });
     }
 
@@ -42,7 +46,7 @@ app.post('/api/create-checkout-session', async (req, res) => {
       price_data: {
         currency: 'eur',
         product_data: {
-          name: item.name,
+          name: item.name || 'Produit Bulbee AUTODETAIL',
           description: `Réf: ${item.refNumber || item.code || ''}`,
         },
         unit_amount: Math.round(Number(item.price) * 100),
@@ -55,8 +59,8 @@ app.post('/api/create-checkout-session', async (req, res) => {
         price_data: {
           currency: 'eur',
           product_data: {
-            name: `Frais de livraison (${carrierName || 'Transporteur'})`,
-            description: 'Livraison sécurisée avec suivi',
+            name: `Frais de livraison (${carrierName || 'Colis suivi'})`,
+            description: 'Acheminement sécurisé et soigné par AUTODETAIL',
           },
           unit_amount: Math.round(Number(shippingCost) * 100),
         },
@@ -67,22 +71,23 @@ app.post('/api/create-checkout-session', async (req, res) => {
     const host = originUrl || req.headers.origin || `http://localhost:${PORT}`;
 
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card', 'link'],
+      payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
       customer_email: customerEmail || undefined,
       client_reference_id: orderRef,
       metadata: {
-        orderRef,
+        orderRef: orderRef || '',
+        carrier: carrierName || '',
       },
       success_url: `${host}/?session_id={CHECKOUT_SESSION_ID}&order_ref=${orderRef}&payment=success`,
       cancel_url: `${host}/?order_ref=${orderRef}&payment=cancelled`,
     });
 
-    return res.json({ url: session.url, sessionId: session.id });
+    res.json({ url: session.url, sessionId: session.id });
   } catch (error: any) {
     console.error('Error creating Stripe session:', error);
-    return res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 

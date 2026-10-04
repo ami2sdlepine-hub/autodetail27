@@ -1,10 +1,9 @@
 import Stripe from 'stripe';
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
-const stripe = stripeSecretKey && stripeSecretKey.startsWith('sk_') ? new Stripe(stripeSecretKey) : null;
 
 export default async function handler(req: any, res: any) {
-  // Set CORS headers
+  // CORS configuration
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -22,12 +21,16 @@ export default async function handler(req: any, res: any) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  if (!stripe) {
+  if (!stripeSecretKey) {
     return res.status(200).json({
       needsConfig: true,
-      message: 'Stripe secret key not configured yet on Vercel environment variables.',
+      message: 'STRIPE_SECRET_KEY non configuré dans les variables d\'environnement Vercel.',
     });
   }
+
+  const stripe = new Stripe(stripeSecretKey, {
+    apiVersion: '2023-10-16' as any,
+  });
 
   try {
     const { items, orderRef, customerEmail, shippingCost, carrierName, originUrl } = req.body || {};
@@ -36,7 +39,7 @@ export default async function handler(req: any, res: any) {
       price_data: {
         currency: 'eur',
         product_data: {
-          name: item.name || 'Produit AUTODETAIL',
+          name: item.name || 'Produit Bulbee AUTODETAIL',
           description: `Réf: ${item.refNumber || item.code || ''}`,
         },
         unit_amount: Math.round(Number(item.price) * 100),
@@ -49,8 +52,8 @@ export default async function handler(req: any, res: any) {
         price_data: {
           currency: 'eur',
           product_data: {
-            name: `Frais de livraison (${carrierName || 'Transporteur'})`,
-            description: 'Livraison sécurisée avec suivi',
+            name: `Frais de livraison (${carrierName || 'Colis suivi'})`,
+            description: 'Acheminement sécurisé et soigné par AUTODETAIL',
           },
           unit_amount: Math.round(Number(shippingCost) * 100),
         },
@@ -61,13 +64,14 @@ export default async function handler(req: any, res: any) {
     const host = originUrl || req.headers?.origin || 'https://www.autodetail27.fr';
 
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card', 'link'],
+      payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
       customer_email: customerEmail || undefined,
       client_reference_id: orderRef,
       metadata: {
         orderRef: orderRef || '',
+        carrier: carrierName || '',
       },
       success_url: `${host}/?session_id={CHECKOUT_SESSION_ID}&order_ref=${orderRef}&payment=success`,
       cancel_url: `${host}/?order_ref=${orderRef}&payment=cancelled`,
