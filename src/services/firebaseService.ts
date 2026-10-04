@@ -90,7 +90,41 @@ export async function addProductToCloud(product: Product): Promise<void> {
 // Remove or hide product in Cloud Firestore
 export async function toggleProductVisibilityInCloud(productId: string, isHidden: boolean): Promise<void> {
   const docRef = doc(db, 'products', productId);
-  await updateDoc(docRef, { isHidden });
+  await setDoc(docRef, { isHidden }, { merge: true });
+}
+
+// Display settings interface
+export interface CloudDisplaySettings {
+  showTrilogySection?: boolean;
+  showBeforeAfter?: boolean;
+  showPacksSection?: boolean;
+  hiddenProductIds?: string[];
+  packs?: any[];
+  customPhotos?: { [productId: string]: string };
+}
+
+// Save display settings to Cloud Firestore
+export async function saveDisplaySettingsToCloud(settings: CloudDisplaySettings): Promise<void> {
+  const docRef = doc(db, 'settings', 'display');
+  await setDoc(docRef, settings, { merge: true });
+}
+
+// Subscribe to display settings in Cloud Firestore
+export function subscribeToDisplaySettings(callback: (settings: CloudDisplaySettings | null) => void) {
+  const docRef = doc(db, 'settings', 'display');
+  return onSnapshot(
+    docRef,
+    (snapshot) => {
+      if (snapshot.exists()) {
+        callback(snapshot.data() as CloudDisplaySettings);
+      } else {
+        callback(null);
+      }
+    },
+    (err) => {
+      console.warn('Display settings subscription notice:', err.message);
+    }
+  );
 }
 
 // Save store settings in Cloud Firestore

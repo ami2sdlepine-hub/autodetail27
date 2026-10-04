@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CATALOG, Product } from './data/products';
+import { CATALOG, Product, tireApplicatorImg } from './data/products';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { InfiniteTicker } from './components/InfiniteTicker';
@@ -33,6 +33,8 @@ import { db } from './firebase';
 import {
   subscribeToProducts,
   subscribeToAuth,
+  subscribeToDisplaySettings,
+  saveDisplaySettingsToCloud,
   updateProductInCloud,
   addProductToCloud,
   toggleProductVisibilityInCloud,
@@ -251,14 +253,19 @@ export default function App() {
   // All products base with overrides applied
   const allRawProducts = [...CATALOG, ...extraProducts].map((p) => {
     const override = productOverrides[p.id] || {};
-    const img = customPhotos[p.id] || override.image || p.image;
+    let img = customPhotos[p.id] || override.image || p.image;
+    if (!img || img === '') {
+      if (p.id.includes('5306') || p.code?.includes('EA229')) {
+        img = tireApplicatorImg;
+      }
+    }
 
     return {
       ...p,
       ...override,
       price: customPrices[p.id] ?? override.price ?? p.price,
       costPrice: override.costPrice !== undefined ? override.costPrice : p.costPrice,
-      image: img,
+      image: img || p.image,
     };
   });
 
@@ -319,9 +326,54 @@ export default function App() {
       }
     });
 
+    const unsubDisplay = subscribeToDisplaySettings((cloudDisplay) => {
+      if (cloudDisplay) {
+        if (cloudDisplay.showBeforeAfter !== undefined) {
+          setShowBeforeAfter(cloudDisplay.showBeforeAfter);
+          try {
+            localStorage.setItem('autodetail_show_before_after', String(cloudDisplay.showBeforeAfter));
+          } catch {}
+        }
+        if (cloudDisplay.showTrilogySection !== undefined) {
+          setShowTrilogySection(cloudDisplay.showTrilogySection);
+          try {
+            localStorage.setItem('autodetail_show_trilogy_section', String(cloudDisplay.showTrilogySection));
+          } catch {}
+        }
+        if (cloudDisplay.showPacksSection !== undefined) {
+          setShowPacksSection(cloudDisplay.showPacksSection);
+          try {
+            localStorage.setItem('autodetail_show_packs_section', String(cloudDisplay.showPacksSection));
+          } catch {}
+        }
+        if (cloudDisplay.hiddenProductIds && Array.isArray(cloudDisplay.hiddenProductIds)) {
+          setHiddenProductIds(cloudDisplay.hiddenProductIds);
+          try {
+            localStorage.setItem('autodetail_hidden_products', JSON.stringify(cloudDisplay.hiddenProductIds));
+          } catch {}
+        }
+        if (cloudDisplay.packs && Array.isArray(cloudDisplay.packs) && cloudDisplay.packs.length > 0) {
+          setPacks(cloudDisplay.packs);
+          try {
+            localStorage.setItem('autodetail_packs', JSON.stringify(cloudDisplay.packs));
+          } catch {}
+        }
+        if (cloudDisplay.customPhotos && Object.keys(cloudDisplay.customPhotos).length > 0) {
+          setCustomPhotos((prev) => {
+            const merged = { ...prev, ...cloudDisplay.customPhotos };
+            try {
+              localStorage.setItem('autodetail_custom_photos', JSON.stringify(merged));
+            } catch {}
+            return merged;
+          });
+        }
+      }
+    });
+
     return () => {
       unsubAuth();
       unsubProducts();
+      unsubDisplay();
     };
   }, []);
 
@@ -368,21 +420,20 @@ export default function App() {
     const isCurrentlyHidden = hiddenProductIds.includes(id);
     const nextHidden = !isCurrentlyHidden;
 
-    setHiddenProductIds((prev) => {
-      const updated = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-      try {
-        localStorage.setItem('autodetail_hidden_products', JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
-      return updated;
-    });
+    const updated = isCurrentlyHidden ? hiddenProductIds.filter((x) => x !== id) : [...hiddenProductIds, id];
+    setHiddenProductIds(updated);
+    try {
+      localStorage.setItem('autodetail_hidden_products', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
 
+    saveDisplaySettingsToCloud({ hiddenProductIds: updated }).catch(() => {});
     toggleProductVisibilityInCloud(id, nextHidden).catch((err) => {
       console.warn('Sync Cloud notice:', err);
     });
 
-    showToast('Visibilité de l\'article synchronisée dans le Cloud');
+    showToast(nextHidden ? 'Article masqué aux clients (synchronisé Cloud)' : 'Article réaffiché (synchronisé Cloud)');
   };
 
   const handleAddProduct = (newProduct: Product) => {
@@ -489,6 +540,7 @@ export default function App() {
     } catch (e) {
       console.error(e);
     }
+    saveDisplaySettingsToCloud({ customPhotos: updated }).catch(() => {});
     const prod = allRawProducts.find((p) => p.id === productId);
     if (prod) {
       updateProductInCloud({ ...prod, image: imageBase64 }).catch(() => {});
@@ -505,6 +557,7 @@ export default function App() {
       console.error(e);
     }
 
+    saveDisplaySettingsToCloud({ customPhotos: merged }).catch(() => {});
     Object.entries(newPhotos).forEach(([id, img]) => {
       const prod = allRawProducts.find((p) => p.id === id);
       if (prod) {
@@ -552,6 +605,7 @@ export default function App() {
     try {
       localStorage.setItem('autodetail_show_before_after', String(visible));
     } catch {}
+    saveDisplaySettingsToCloud({ showBeforeAfter: visible }).catch(() => {});
     showToast(visible ? 'Section "Avant / Après" affichée' : 'Section "Avant / Après" masquée aux clients');
   };
 
@@ -560,6 +614,7 @@ export default function App() {
     try {
       localStorage.setItem('autodetail_show_packs_section', String(visible));
     } catch {}
+    saveDisplaySettingsToCloud({ showPacksSection: visible }).catch(() => {});
     showToast(visible ? 'Section "Packs & Rituels" affichée' : 'Section "Packs & Rituels" masquée aux clients');
   };
 
@@ -568,6 +623,7 @@ export default function App() {
     try {
       localStorage.setItem('autodetail_packs', JSON.stringify(newPacks));
     } catch {}
+    saveDisplaySettingsToCloud({ packs: newPacks }).catch(() => {});
     showToast('Packs et compositions mis à jour avec succès !');
   };
 
@@ -576,6 +632,7 @@ export default function App() {
     try {
       localStorage.setItem('autodetail_show_trilogy_section', String(visible));
     } catch {}
+    saveDisplaySettingsToCloud({ showTrilogySection: visible }).catch(() => {});
     showToast(visible ? 'Section "Trilogie Polissage" affichée' : 'Section "Trilogie Polissage" masquée aux clients');
   };
 

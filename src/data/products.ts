@@ -13,9 +13,9 @@ import wheelReactImg from '../assets/images/bulbee_wheel_react_black_17911405738
 import cutImg from '../assets/images/bulbee_cut_black_1791140716058.jpg';
 import correctImg from '../assets/images/bulbee_correct_black_1791140730087.jpg';
 import waxImg from '../assets/images/bulbee_wax_black_1791140743717.jpg';
-import bugCleanerImg from '../assets/images/bulbee_bug_cleaner_1791102780899.jpg';
-import instantShineImg from '../assets/images/bulbee_instant_shine_1791102796128.jpg';
-export { default as tireApplicatorImg } from '../assets/images/applicateur_pneu_real_1791140047169.jpg';
+import bugCleanerImg from '../assets/images/bug_cleaner_black_1791143939574.jpg';
+import instantShineImg from '../assets/images/instant_shine_black_1791143955184.jpg';
+export { default as tireApplicatorImg } from '../assets/images/applicateur_pneu_black_1791143970734.jpg';
 
 export interface Product {
   id: string;
