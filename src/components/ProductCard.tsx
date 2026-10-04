@@ -43,11 +43,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             hasIncoming ? (
               <span className="text-[10px] font-mono text-[#3ee6d8] bg-[#3ee6d8]/15 border border-[#3ee6d8]/40 px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
                 <Clock className="w-3 h-3 flex-shrink-0" />
-                <span>Réassort en cours — bientôt de retour</span>
+                <span>Réassort en cours (10-14j)</span>
               </span>
             ) : (
-              <span className="text-[10px] font-mono text-red-400 bg-red-500/10 border border-red-500/30 px-2 py-0.5 rounded-md font-semibold">
-                Rupture
+              <span className="text-[10px] font-mono text-[#b485ff] bg-[#7b61ff]/15 border border-[#7b61ff]/30 px-2 py-0.5 rounded-md font-medium">
+                Sur commande (10-14j)
               </span>
             )
           ) : isLowStock ? (
@@ -128,15 +128,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             </span>
             <button
               onClick={(e) => {
-                if (product.stockCount !== undefined && quantity >= product.stockCount) return;
                 onAddToCart(product, e);
               }}
-              disabled={product.stockCount !== undefined && quantity >= product.stockCount}
-              className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
-                product.stockCount !== undefined && quantity >= product.stockCount
-                  ? 'bg-[#151a22] text-[#8b949e] opacity-40 cursor-not-allowed'
-                  : 'bg-[#3ee6d8] hover:bg-[#3ddc97] text-[#0a0d12]'
-              }`}
+              className="w-7 h-7 rounded-lg bg-[#3ee6d8] hover:bg-[#3ddc97] text-[#0a0d12] flex items-center justify-center transition-colors cursor-pointer"
               aria-label="Augmenter la quantité"
             >
               <Plus className="w-3 h-3 stroke-[3]" />
@@ -145,26 +139,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         ) : (
           <button
             onClick={(e) => {
-              if (isBackorder) return;
               onAddToCart(product, e);
             }}
-            disabled={isBackorder}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-plate font-black uppercase tracking-wider transition-all duration-200 ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-plate font-black uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer ${
               isBackorder
-                ? hasIncoming
-                  ? 'bg-[#151a22] border border-[#3ee6d8]/40 text-[#3ee6d8] opacity-80 cursor-not-allowed'
-                  : 'bg-[#151a22] border border-red-500/30 text-red-400 opacity-60 cursor-not-allowed'
-                : 'bg-[#151a22] hover:bg-[#3ee6d8] border border-[#232a35] hover:border-[#3ee6d8] text-[#eef1f4] hover:text-[#0a0d12] active:scale-95 cursor-pointer'
+                ? 'bg-[#151a22] hover:bg-[#7b61ff] border border-[#7b61ff]/40 hover:border-[#7b61ff] text-[#b485ff] hover:text-[#0a0d12]'
+                : 'bg-[#151a22] hover:bg-[#3ee6d8] border border-[#232a35] hover:border-[#3ee6d8] text-[#eef1f4] hover:text-[#0a0d12]'
             }`}
           >
-            {!isBackorder && <Plus className="w-3.5 h-3.5 stroke-[3]" />}
-            <span>
-              {isBackorder
-                ? hasIncoming
-                  ? 'Bientôt de retour'
-                  : 'Rupture'
-                : 'Ajouter'}
-            </span>
+            <Plus className="w-3.5 h-3.5 stroke-[3]" />
+            <span>{isBackorder ? 'Précommander' : 'Ajouter'}</span>
           </button>
         )}
       </div>

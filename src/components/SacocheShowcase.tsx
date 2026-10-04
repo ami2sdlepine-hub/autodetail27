@@ -133,43 +133,33 @@ export const SacocheShowcase: React.FC<SacocheShowcaseProps> = ({
                 <div className="text-[11px] text-[#3ddc97] font-medium flex items-center gap-1 mt-0.5">
                   <Sparkles className="w-3 h-3" /> Port offert inclus
                 </div>
+                {isOut && (
+                  <div className="text-[11px] font-mono text-[#b485ff] flex items-center gap-1 mt-1 font-semibold">
+                    <Clock className="w-3 h-3 text-[#b485ff]" />
+                    <span>
+                      {hasIncoming ? 'Réassort en cours • ' : ''}Sur commande (délai 10 à 14 jours)
+                    </span>
+                  </div>
+                )}
               </div>
 
-              {isOut ? (
-                <button
-                  type="button"
-                  disabled
-                  className={`w-full sm:w-auto px-6 py-3.5 rounded-xl font-plate font-black uppercase text-xs tracking-wider opacity-75 cursor-not-allowed flex items-center justify-center gap-2 ${
-                    hasIncoming
-                      ? 'bg-[#151a22] border border-[#3ee6d8]/40 text-[#3ee6d8]'
-                      : 'bg-[#151a22] border border-red-500/30 text-red-400'
-                  }`}
-                >
-                  {hasIncoming ? (
-                    <>
-                      <Clock className="w-4 h-4" />
-                      <span>Réassort en cours — bientôt de retour</span>
-                    </>
-                  ) : (
-                    <>
-                      <AlertCircle className="w-4 h-4" />
-                      <span>Rupture de stock</span>
-                    </>
-                  )}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    soundManager.playPschitt();
-                    onAddToCart(sacocheProduct, e);
-                  }}
-                  className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-[#3ee6d8] to-[#7b61ff] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider shadow-lg shadow-[#3ee6d8]/20 hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <ShoppingCart className="w-4 h-4 stroke-[2.5]" />
-                  <span>Ajouter le Pack Complet au panier</span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  soundManager.playPschitt();
+                  onAddToCart(sacocheProduct, e);
+                }}
+                className={`w-full sm:w-auto px-6 py-3.5 rounded-xl font-plate font-black uppercase text-xs tracking-wider shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  isOut
+                    ? 'bg-gradient-to-r from-[#7b61ff] to-[#3ee6d8] text-white hover:brightness-110 shadow-[#7b61ff]/25'
+                    : 'bg-gradient-to-r from-[#3ee6d8] to-[#7b61ff] text-[#0a0d12] hover:brightness-110 shadow-[#3ee6d8]/20'
+                }`}
+              >
+                <ShoppingCart className="w-4 h-4 stroke-[2.5]" />
+                <span>
+                  {isOut ? 'Précommander le Pack Complet' : 'Ajouter le Pack Complet au panier'}
+                </span>
+              </button>
             </div>
           </div>
         </div>
