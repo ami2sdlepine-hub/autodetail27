@@ -1,7 +1,7 @@
 import React from 'react';
 import sacocheImg from '../assets/images/bulbee_sacoche_real_1790974851655.jpg';
 import { CATALOG, Product } from '../data/products';
-import { ShieldCheck, Sparkles, PackageCheck, Plus } from 'lucide-react';
+import { ShieldCheck, Sparkles, PackageCheck, ShoppingCart, Clock, AlertCircle } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
 
 interface SacocheShowcaseProps {
@@ -16,6 +16,8 @@ export const SacocheShowcase: React.FC<SacocheShowcaseProps> = ({
   onOpenDetails,
 }) => {
   const sacocheProduct = product || CATALOG.find((p) => p.id === 'SB') || CATALOG[5];
+  const isOut = sacocheProduct.stockCount !== undefined && sacocheProduct.stockCount <= 0;
+  const hasIncoming = isOut && Boolean(sacocheProduct.incomingCount && sacocheProduct.incomingCount > 0);
 
   const compositionPoints = [
     { title: 'Wheel React (500 ml) #98', desc: 'Décontaminant ferreux & jantes réactif pourpre' },
@@ -93,11 +95,11 @@ export const SacocheShowcase: React.FC<SacocheShowcaseProps> = ({
               </div>
 
               <h3 className="font-plate text-2xl sm:text-4xl text-[#eef1f4] mb-3">
-                6 indispensables + la sacoche
+                6 indispensables avec sacoche incluse
               </h3>
 
               <p className="text-sm text-[#8b949e] mb-6 leading-relaxed">
-                Une sélection complète réunissant les références majeures pour l'extérieur et l'intérieur, accompagnée des accessoires de lustrage indispensables.
+                Une sélection complète réunissant les références majeures pour l'extérieur et l'intérieur, accompagnée des accessoires de lustrage et de sa sacoche de transport officielle.
               </p>
 
               {/* 6 points composition */}
@@ -133,17 +135,41 @@ export const SacocheShowcase: React.FC<SacocheShowcaseProps> = ({
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={(e) => {
-                  soundManager.playPschitt();
-                  onAddToCart(sacocheProduct, e);
-                }}
-                className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-[#3ee6d8] to-[#7b61ff] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider shadow-lg shadow-[#3ee6d8]/20 hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2"
-              >
-                <Plus className="w-4 h-4 stroke-[3]" />
-                <span>Ajouter la Sacoche au panier</span>
-              </button>
+              {isOut ? (
+                <button
+                  type="button"
+                  disabled
+                  className={`w-full sm:w-auto px-6 py-3.5 rounded-xl font-plate font-black uppercase text-xs tracking-wider opacity-75 cursor-not-allowed flex items-center justify-center gap-2 ${
+                    hasIncoming
+                      ? 'bg-[#151a22] border border-[#3ee6d8]/40 text-[#3ee6d8]'
+                      : 'bg-[#151a22] border border-red-500/30 text-red-400'
+                  }`}
+                >
+                  {hasIncoming ? (
+                    <>
+                      <Clock className="w-4 h-4" />
+                      <span>Réassort en cours — bientôt de retour</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="w-4 h-4" />
+                      <span>Rupture de stock</span>
+                    </>
+                  )}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    soundManager.playPschitt();
+                    onAddToCart(sacocheProduct, e);
+                  }}
+                  className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-[#3ee6d8] to-[#7b61ff] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider shadow-lg shadow-[#3ee6d8]/20 hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <ShoppingCart className="w-4 h-4 stroke-[2.5]" />
+                  <span>Ajouter le Pack Complet au panier</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -150,22 +150,22 @@ export default function App() {
       return saved
         ? JSON.parse(saved)
         : {
-            siret: '',
+            siret: '88914433300024',
             legalStatus: 'Micro-entreprise (Entreprise Individuelle)',
             ownerName: 'Pauline Pourrier',
             brandName: 'AUTODETAIL',
             address: '8 Rue Saint Gilles, 27630 Heubécourt-Haricourt',
-            phone: '',
+            phone: '06 14 06 44 48',
             email: 'contact@autodetail27.fr',
           };
     } catch {
       return {
-        siret: '',
+        siret: '88914433300024',
         legalStatus: 'Micro-entreprise (Entreprise Individuelle)',
         ownerName: 'Pauline Pourrier',
         brandName: 'AUTODETAIL',
         address: '8 Rue Saint Gilles, 27630 Heubécourt-Haricourt',
-        phone: '',
+        phone: '06 14 06 44 48',
         email: 'contact@autodetail27.fr',
       };
     }
@@ -550,7 +550,11 @@ export default function App() {
     showToast('Configuration de la Trilogie Polissage enregistrée !');
   };
 
-  const handleApplyStocksFromSheet = (stocks: { [code: string]: number }, showNotice = true) => {
+  const handleApplyStocksFromSheet = (
+    stocks: { [code: string]: number },
+    arrivages?: { [code: string]: number },
+    showNotice = true
+  ) => {
     let updatedCount = 0;
     const newOverrides = { ...productOverrides };
 
@@ -566,10 +570,22 @@ export default function App() {
         updatedCount++;
         const currentOverride = newOverrides[target.id] || {};
         const newStatus = qty <= 0 ? 'backorder' : qty <= 2 ? 'low_stock' : 'in_stock';
+        const incoming =
+          arrivages && (arrivages[codeOrRef.toUpperCase()] !== undefined ||
+            (target.code && arrivages[target.code.toUpperCase()] !== undefined) ||
+            (target.id && arrivages[target.id.toUpperCase()] !== undefined))
+            ? Number(
+                arrivages[codeOrRef.toUpperCase()] ??
+                  arrivages[target.code.toUpperCase()] ??
+                  arrivages[target.id.toUpperCase()]
+              ) || 0
+            : currentOverride.incomingCount || 0;
+
         newOverrides[target.id] = {
           ...currentOverride,
           stockCount: qty,
           stockStatus: newStatus,
+          incomingCount: incoming,
         };
 
         // Also push to Cloud Firestore
@@ -577,6 +593,7 @@ export default function App() {
           ...target,
           stockCount: qty,
           stockStatus: newStatus,
+          incomingCount: incoming,
         }).catch(() => {});
       }
     });
@@ -587,7 +604,7 @@ export default function App() {
     } catch {}
 
     if (showNotice) {
-      showToast(`${updatedCount} flacons synchronisés en direct depuis LP SYSTEME !`);
+      showToast(`${updatedCount} références synchronisées en direct depuis LP SYSTEME !`);
     }
   };
 
@@ -596,7 +613,7 @@ export default function App() {
     fetchStockFromAppsScript()
       .then((res) => {
         if (res.success && res.stocks && Object.keys(res.stocks).length > 0) {
-          handleApplyStocksFromSheet(res.stocks, false);
+          handleApplyStocksFromSheet(res.stocks, res.arrivages, false);
         }
       })
       .catch((err) => {

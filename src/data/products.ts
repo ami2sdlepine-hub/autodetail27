@@ -26,6 +26,7 @@ export interface Product {
   costPrice?: number;
   stockStatus: 'in_stock' | 'low_stock' | 'backorder';
   stockCount?: number;
+  incomingCount?: number;
   badge?: string;
   usage: string;
   detail: string;
@@ -158,7 +159,7 @@ export const CATALOG: Product[] = [
     name: 'Sacoche Bulbee (Kit complet)',
     volume: 'Kit complet',
     refNumber: 'KIT',
-    price: 76.00,
+    price: 75.00,
     costPrice: 37.80,
     stockStatus: 'backorder',
     badge: 'Le kit complet',

@@ -17,7 +17,7 @@ export const LegalModals: React.FC<LegalModalsProps> = ({ type, onClose, busines
   const address = businessSettings?.address || '8 Rue Saint Gilles, 27630 Heubécourt-Haricourt, France';
   const email = businessSettings?.email || 'contact@autodetail27.fr';
   const legal = businessSettings?.legalStatus || 'Micro-entreprise (Entreprise Individuelle)';
-  const siret = businessSettings?.siret ? `SIRET : ${businessSettings.siret}` : "SIRET en cours d'immatriculation (RCS non requis)";
+  const siret = `SIRET : ${businessSettings?.siret || '88914433300024'}`;
 
   return (
     <div

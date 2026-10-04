@@ -1,13 +1,15 @@
 /**
  * Service de synchronisation en temps réel avec Google Sheets via Google Apps Script
- * - Lecture du stock (doGet)
- * - Écriture des commandes en précommandes PrecosAD & journal Commandes_Web (doPost)
+ * - Lecture du stock et des arrivages (doGet)
+ * - Écriture des commandes dans l'onglet CommandesWeb de LP SYSTEME (doPost)
+ * - Vérification du jeton secret de sécurité anti-spam
  */
 
 export interface StockSyncResult {
   success: boolean;
   message: string;
   stocks?: { [productCodeOrId: string]: number };
+  arrivages?: { [productCodeOrId: string]: number };
 }
 
 export const DEFAULT_APPS_SCRIPT_URL =
@@ -48,7 +50,63 @@ export function setAppsScriptSecret(secret: string): void {
 }
 
 /**
- * Récupère les stocks en direct depuis Google Sheets
+ * Teste la validité du jeton secret auprès du script Google Apps Script (doPost)
+ */
+export async function verifyAppsScriptSecret(
+  secret: string,
+  customUrl?: string
+): Promise<{ valid: boolean; message: string }> {
+  const url = customUrl || getAppsScriptUrl();
+  if (!url) {
+    return { valid: false, message: 'URL Google Apps Script non configurée.' };
+  }
+  if (!secret || !secret.trim()) {
+    return { valid: false, message: 'Veuillez saisir un jeton secret.' };
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+      body: JSON.stringify({
+        secret: secret.trim(),
+        testPing: true,
+      }),
+    });
+
+    if (!res.ok) {
+      return {
+        valid: false,
+        message: `Erreur serveur HTTP ${res.status}. Vérifiez le déploiement de votre script.`,
+      };
+    }
+
+    const data = await res.json();
+    if (data && data.error === 'non autorisé') {
+      return {
+        valid: false,
+        message: 'Jeton secret refusé par le script (erreur: non autorisé). Vérifiez le SECRET configuré dans votre script Google Apps Script.',
+      };
+    }
+
+    // Le script a répondu et le secret a été accepté (ex: 'commande incomplète' car test de ping)
+    return {
+      valid: true,
+      message: 'Jeton secret validé avec succès par Google Apps Script !',
+    };
+  } catch (err: any) {
+    return {
+      valid: false,
+      message:
+        'Impossible de joindre le script en POST. Vérifiez que "Qui a accès" est configuré sur "Tout le monde" dans Google Apps Script.',
+    };
+  }
+}
+
+/**
+ * Récupère les stocks et les arrivages en direct depuis Google Sheets (doGet)
  */
 export async function fetchStockFromAppsScript(customUrl?: string): Promise<StockSyncResult> {
   const url = customUrl || getAppsScriptUrl();
@@ -85,25 +143,40 @@ export async function fetchStockFromAppsScript(customUrl?: string): Promise<Stoc
     const data = await res.json();
 
     const stocksMap: { [key: string]: number } = {};
+    const arrivagesMap: { [key: string]: number } = {};
 
+    // Stock map
     if (data && data.stocks && typeof data.stocks === 'object') {
       Object.entries(data.stocks).forEach(([k, v]) => {
-        stocksMap[k.toUpperCase()] = Number(v);
+        stocksMap[k.toUpperCase()] = Math.max(0, Number(v) || 0);
       });
     } else if (Array.isArray(data)) {
       data.forEach((item: any) => {
         const key = item.id || item.code || item.ref || item.refNumber;
         const count = item.stock ?? item.quantity ?? item.stockCount;
         if (key && count !== undefined) {
-          stocksMap[String(key).toUpperCase()] = Number(count);
+          stocksMap[String(key).toUpperCase()] = Math.max(0, Number(count) || 0);
         }
       });
     }
 
+    // Arrivages map (commandes fournisseur en cours)
+    if (data && data.arrivages && typeof data.arrivages === 'object') {
+      Object.entries(data.arrivages).forEach(([k, v]) => {
+        arrivagesMap[k.toUpperCase()] = Math.max(0, Number(v) || 0);
+      });
+    }
+
+    const nbRefs = Object.keys(stocksMap).length;
+    const nbArrivages = Object.keys(arrivagesMap).filter((k) => arrivagesMap[k] > 0).length;
+
     return {
       success: true,
-      message: `${Object.keys(stocksMap).length} références de stock récupérées depuis LP SYSTEME !`,
+      message: `${nbRefs} références de stock récupérées depuis LP SYSTEME${
+        nbArrivages > 0 ? ` (dont ${nbArrivages} en réassort fournisseur)` : ''
+      } !`,
       stocks: stocksMap,
+      arrivages: arrivagesMap,
     };
   } catch (err: any) {
     return {
@@ -115,7 +188,7 @@ export async function fetchStockFromAppsScript(customUrl?: string): Promise<Stoc
 }
 
 /**
- * Envoie une commande validée dans Google Sheets (PrecosAD + Commandes_Web)
+ * Envoie une commande validée dans Google Sheets (onglet CommandesWeb de LP SYSTEME)
  */
 export async function pushOrderToAppsScript(orderData: {
   customerName: string;

@@ -17,9 +17,7 @@ export const Footer: React.FC<FooterProps> = ({
   isAdmin,
   businessSettings,
 }) => {
-  const siretText = businessSettings?.siret
-    ? `SIRET : ${businessSettings.siret}`
-    : "Micro-entreprise • SIRET en cours d'immatriculation";
+  const siretText = `SIRET : ${businessSettings?.siret || '88914433300024'}`;
 
   const addressText =
     businessSettings?.address || '8 Rue Saint Gilles, 27630 Heubécourt-Haricourt';

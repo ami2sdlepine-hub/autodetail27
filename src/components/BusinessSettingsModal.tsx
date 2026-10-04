@@ -7,6 +7,7 @@ import {
   getAppsScriptSecret,
   setAppsScriptSecret,
   fetchStockFromAppsScript,
+  verifyAppsScriptSecret,
   StockSyncResult,
 } from '../services/appsScriptSync';
 
@@ -25,7 +26,10 @@ interface BusinessSettingsModalProps {
   onClose: () => void;
   settings: BusinessSettings;
   onSave: (newSettings: BusinessSettings) => void;
-  onApplyStocks?: (stocks: { [productCode: string]: number }) => void;
+  onApplyStocks?: (
+    stocks: { [productCode: string]: number },
+    arrivages?: { [productCode: string]: number }
+  ) => void;
 }
 
 export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
@@ -35,7 +39,7 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
   onSave,
   onApplyStocks,
 }) => {
-  const [siret, setSiret] = useState<string>(settings.siret || '');
+  const [siret, setSiret] = useState<string>(settings.siret || '88914433300024');
   const [legalStatus, setLegalStatus] = useState<string>(
     settings.legalStatus || 'Micro-entreprise (Entreprise Individuelle)'
   );
@@ -86,13 +90,32 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
     setSyncResult(null);
     soundManager.playClick();
 
+    // Étape 1 : Vérification stricte du jeton SECRET auprès du script (doPost)
+    const secretCheck = await verifyAppsScriptSecret(appsScriptSecret, appsScriptUrl);
+    if (!secretCheck.valid) {
+      setSyncLoading(false);
+      setSyncResult({
+        success: false,
+        message: secretCheck.message,
+      });
+      return;
+    }
+
+    // Étape 2 : Récupération des stocks et arrivages réels (doGet)
     const res = await fetchStockFromAppsScript(appsScriptUrl);
     setSyncLoading(false);
-    setSyncResult(res);
 
-    if (res.success && res.stocks && onApplyStocks) {
+    if (res.success) {
       soundManager.playCashRegister();
-      onApplyStocks(res.stocks);
+      setSyncResult({
+        ...res,
+        message: `✓ Jeton secret validé ! ${res.message}`,
+      });
+      if (res.stocks && onApplyStocks) {
+        onApplyStocks(res.stocks, res.arrivages);
+      }
+    } else {
+      setSyncResult(res);
     }
   };
 
@@ -222,29 +245,7 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
             )}
           </div>
 
-          {/* Section 2: Paiement Sécurisé Stripe Checkout */}
-          <div className="p-4 rounded-2xl bg-[#151a22] border border-[#232a35] space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-plate uppercase text-[#3ee6d8]">
-                <CreditCard className="w-4 h-4" />
-                <span>Paiement en ligne sécurisé (Stripe Checkout)</span>
-              </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#3ee6d8]/10 text-[#3ee6d8] border border-[#3ee6d8]/30">
-                CB • Apple Pay • Google Pay
-              </span>
-            </div>
-            <p className="text-xs text-[#8b949e] leading-relaxed">
-              Encaissement direct et sécurisé. Les montants sont verrouillés automatiquement au centime près selon le panier et le mode d'expédition choisi.
-            </p>
-            <div className="p-3 rounded-xl bg-black/40 border border-[#232a35] text-[11px] text-[#8b949e] space-y-1">
-              <p className="text-[#eef1f4] font-medium">Clé secrète d'encaissement :</p>
-              <p>
-                Définissez la variable serveur <code className="text-[#3ee6d8]">STRIPE_SECRET_KEY</code> (disponible sur votre compte <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer" className="text-[#3ee6d8] underline">stripe.com</a>).
-              </p>
-            </div>
-          </div>
-
-          {/* Section 3: Mentions Légales & SIRET */}
+          {/* Section 2: Mentions Légales & SIRET */}
           <div className="space-y-4">
             <div className="text-xs font-plate uppercase text-[#8b949e] flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-[#3ee6d8]" />

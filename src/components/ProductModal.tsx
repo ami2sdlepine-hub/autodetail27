@@ -1,6 +1,6 @@
 import React from 'react';
 import { Product } from '../data/products';
-import { X, CheckCircle2, ShieldCheck, Sparkles, Plus, AlertCircle, QrCode } from 'lucide-react';
+import { X, CheckCircle2, ShieldCheck, Sparkles, Plus, AlertCircle, QrCode, Clock } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
 
 interface ProductModalProps {
@@ -82,13 +82,22 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               {/* Stock notice */}
               {(() => {
                 const isBackorder = (product.stockCount !== undefined && product.stockCount <= 0) || product.stockStatus === 'backorder';
+                const hasIncoming = isBackorder && Boolean(product.incomingCount && product.incomingCount > 0);
                 const isLowStock = !isBackorder && ((product.stockCount !== undefined && product.stockCount <= 3) || product.stockStatus === 'low_stock');
 
                 if (isBackorder) {
+                  if (hasIncoming) {
+                    return (
+                      <div className="mt-2 text-xs flex items-center gap-1.5 text-[#3ee6d8]">
+                        <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="font-semibold">Réassort en cours — bientôt de retour</span>
+                      </div>
+                    );
+                  }
                   return (
-                    <div className="mt-2 text-xs flex items-center gap-1.5 text-[#b485ff]">
-                      <span className="w-2 h-2 rounded-full bg-[#7b61ff]" />
-                      <span className="font-semibold">Sur commande — Délai d'approvisionnement : 10 à 14 jours</span>
+                    <div className="mt-2 text-xs flex items-center gap-1.5 text-red-400">
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="font-semibold">Rupture de stock temporaire</span>
                     </div>
                   );
                 }
@@ -113,21 +122,42 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
             {/* Quick Add CTA & QR Code */}
             <div className="mt-6 space-y-2">
-              <button
-                onClick={(e) => {
-                  soundManager.playPschitt();
-                  onAddToCart(product, e);
-                  onClose();
-                }}
-                className="w-full py-3 px-5 rounded-xl bg-gradient-to-r from-[#3ee6d8] to-[#7b61ff] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider shadow-lg shadow-[#3ee6d8]/20 hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Plus className="w-4 h-4 stroke-[3]" />
-                <span>
-                  {(product.stockCount !== undefined && product.stockCount <= 0) || product.stockStatus === 'backorder'
-                    ? `Précommander (${product.price.toFixed(2).replace('.', ',')} €)`
-                    : `Ajouter au panier (${product.price.toFixed(2).replace('.', ',')} €)`}
-                </span>
-              </button>
+              {(() => {
+                const isBackorder = (product.stockCount !== undefined && product.stockCount <= 0) || product.stockStatus === 'backorder';
+                const hasIncoming = isBackorder && Boolean(product.incomingCount && product.incomingCount > 0);
+
+                if (isBackorder) {
+                  return (
+                    <button
+                      disabled
+                      className={`w-full py-3 px-5 rounded-xl font-plate font-black uppercase text-xs tracking-wider opacity-75 cursor-not-allowed flex items-center justify-center gap-2 ${
+                        hasIncoming
+                          ? 'bg-[#151a22] border border-[#3ee6d8]/40 text-[#3ee6d8]'
+                          : 'bg-[#151a22] border border-red-500/30 text-red-400'
+                      }`}
+                    >
+                      {hasIncoming && <Clock className="w-4 h-4" />}
+                      <span>
+                        {hasIncoming ? 'Réassort en cours — bientôt de retour' : 'Rupture de stock'}
+                      </span>
+                    </button>
+                  );
+                }
+
+                return (
+                  <button
+                    onClick={(e) => {
+                      soundManager.playPschitt();
+                      onAddToCart(product, e);
+                      onClose();
+                    }}
+                    className="w-full py-3 px-5 rounded-xl bg-gradient-to-r from-[#3ee6d8] to-[#7b61ff] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider shadow-lg shadow-[#3ee6d8]/20 hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4 stroke-[3]" />
+                    <span>Ajouter au panier ({product.price.toFixed(2).replace('.', ',')} €)</span>
+                  </button>
+                );
+              })()}
 
               {onOpenQRCode && (
                 <button
