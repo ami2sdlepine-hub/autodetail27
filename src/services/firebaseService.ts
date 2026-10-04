@@ -44,6 +44,13 @@ export function subscribeToProducts(callback: (products: Product[]) => void) {
 }
 
 function sanitizeProductForFirestore(product: Product): Record<string, any> {
+  // Never save bundled local asset paths (e.g. /assets/bulbee_...) to cloud,
+  // only save real user-uploaded base64 or external URLs.
+  const isCustomImage = Boolean(
+    product.image &&
+    (product.image.startsWith('data:image') || product.image.startsWith('http'))
+  );
+
   const sanitized: Record<string, any> = {
     id: product.id,
     code: product.code || product.id,
@@ -59,7 +66,7 @@ function sanitizeProductForFirestore(product: Product): Record<string, any> {
     usage: product.usage || '',
     detail: product.detail || '',
     conseils: Array.isArray(product.conseils) ? product.conseils : [],
-    image: product.image || '',
+    image: isCustomImage ? product.image : '',
     isHidden: Boolean(product.isHidden),
   };
   if (product.stockCount !== undefined) {

@@ -288,7 +288,9 @@ export default function App() {
 
         cloudProducts.forEach((p: any) => {
           if (p.price) cloudPrices[p.id] = p.price;
-          if (p.image) cloudPhotos[p.id] = p.image;
+          if (p.image && (p.image.startsWith('data:image') || p.image.startsWith('http'))) {
+            cloudPhotos[p.id] = p.image;
+          }
           if (p.isHidden) cloudHidden.push(p.id);
           if (!CATALOG.some((catP) => catP.id === p.id)) {
             cloudExtra.push(p);
@@ -494,9 +496,10 @@ export default function App() {
   };
 
   const handleUpdatePhotos = (newPhotos: { [id: string]: string }) => {
-    setCustomPhotos(newPhotos);
+    const merged = { ...customPhotos, ...newPhotos };
+    setCustomPhotos(merged);
     try {
-      localStorage.setItem('autodetail_custom_photos', JSON.stringify(newPhotos));
+      localStorage.setItem('autodetail_custom_photos', JSON.stringify(merged));
     } catch (e) {
       console.error(e);
     }
