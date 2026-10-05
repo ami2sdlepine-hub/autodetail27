@@ -58,6 +58,13 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
   const [syncLoading, setSyncLoading] = useState<boolean>(false);
   const [syncResult, setSyncResult] = useState<StockSyncResult | null>(null);
 
+  React.useEffect(() => {
+    if (isOpen) {
+      setAppsScriptUrlState(getAppsScriptUrl());
+      setAppsScriptSecretState(getAppsScriptSecret());
+    }
+  }, [isOpen]);
+
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
 
   if (!isOpen) return null;
@@ -182,9 +189,9 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
               </label>
               <input
                 type="url"
-                value={appsScriptUrl}
+                value={appsScriptUrl || getAppsScriptUrl()}
                 onChange={(e) => setAppsScriptUrlState(e.target.value)}
-                placeholder="https://script.google.com/macros/s/.../exec"
+                placeholder={getAppsScriptUrl()}
                 className="w-full bg-[#10141b] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2.5 text-xs text-[#eef1f4] outline-none font-mono"
               />
             </div>
@@ -196,9 +203,9 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
               </label>
               <input
                 type="text"
-                value={appsScriptSecret}
+                value={appsScriptSecret || getAppsScriptSecret()}
                 onChange={(e) => setAppsScriptSecretState(e.target.value)}
-                placeholder="le-herisson-lave-les-jantes-en-77-secondes"
+                placeholder={getAppsScriptSecret()}
                 className="w-full bg-[#10141b] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2.5 text-xs text-[#eef1f4] outline-none font-mono"
               />
             </div>

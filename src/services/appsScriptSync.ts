@@ -20,7 +20,11 @@ export const DEFAULT_APPS_SCRIPT_SECRET = 'le-herisson-lave-les-jantes-en-77-sec
 
 export function getAppsScriptUrl(): string {
   try {
-    return localStorage.getItem('autodetail_appscript_url') || DEFAULT_APPS_SCRIPT_URL;
+    const stored = localStorage.getItem('autodetail_appscript_url');
+    if (!stored || stored.includes('AKfycby') || stored.includes('404') || stored.trim() === '') {
+      return DEFAULT_APPS_SCRIPT_URL;
+    }
+    return stored;
   } catch {
     return DEFAULT_APPS_SCRIPT_URL;
   }
@@ -36,7 +40,11 @@ export function setAppsScriptUrl(url: string): void {
 
 export function getAppsScriptSecret(): string {
   try {
-    return localStorage.getItem('autodetail_appscript_secret') || DEFAULT_APPS_SCRIPT_SECRET;
+    const stored = localStorage.getItem('autodetail_appscript_secret');
+    if (!stored || stored.includes('8zt') || stored.includes('CHANGE-MOI') || stored.trim() === '') {
+      return DEFAULT_APPS_SCRIPT_SECRET;
+    }
+    return stored;
   } catch {
     return DEFAULT_APPS_SCRIPT_SECRET;
   }
