@@ -85,7 +85,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             soundManager.playClick();
             onOpenDetails(product);
           }}
-          className="cursor-pointer"
+          className="cursor-pointer flex-1 flex flex-col"
         >
           <div className="flex items-baseline justify-between gap-2">
             <h3 className="font-plate text-lg sm:text-xl text-[#eef1f4] group-hover:text-[#3ee6d8] transition-colors truncate">
@@ -104,11 +104,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
       {/* Bottom Pricing & Cart Action */}
       <div className="mt-auto pt-4 border-t border-[#232a35] flex items-center justify-between gap-3">
-        <div>
-          <div className="font-plate text-xl sm:text-2xl text-[#eef1f4]">
+        <div className="whitespace-nowrap flex-shrink-0">
+          <div className="font-plate text-xl sm:text-2xl text-[#eef1f4] whitespace-nowrap">
             {product.price.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
           </div>
-          <span className="text-[10px] font-mono text-[#8b949e]">TTC • unitaire</span>
+          <span className="text-[10px] font-mono text-[#8b949e] whitespace-nowrap block">TTC • unitaire</span>
         </div>
 
         {quantity > 0 ? (
@@ -141,7 +141,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             onClick={(e) => {
               onAddToCart(product, e);
             }}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-plate font-black uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-plate font-black uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer whitespace-nowrap flex-shrink-0 ${
               isBackorder
                 ? 'bg-[#151a22] hover:bg-[#7b61ff] border border-[#7b61ff]/40 hover:border-[#7b61ff] text-[#b485ff] hover:text-[#0a0d12]'
                 : 'bg-[#151a22] hover:bg-[#3ee6d8] border border-[#232a35] hover:border-[#3ee6d8] text-[#eef1f4] hover:text-[#0a0d12]'
