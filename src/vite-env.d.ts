@@ -5,6 +5,11 @@ declare module '*.jpg' {
   export default src;
 }
 
+declare module '*?v=3' {
+  const src: string;
+  export default src;
+}
+
 declare module '*.png' {
   const src: string;
   export default src;

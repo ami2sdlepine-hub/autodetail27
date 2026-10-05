@@ -1,5 +1,5 @@
 import React from 'react';
-import sacocheImg from '../assets/images/bulbee_sacoche_pack.jpg';
+import sacocheImg from '../assets/images/bulbee_sacoche_pack_v2.jpg?v=3';
 import { CATALOG, Product } from '../data/products';
 import { ShieldCheck, Sparkles, PackageCheck, ShoppingCart, Clock, AlertCircle } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';

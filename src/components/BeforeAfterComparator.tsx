@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
-import beforeImg from '../assets/images/car_before_dirty.jpg';
-import afterImg from '../assets/images/car_after_clean.jpg';
+import beforeImg from '../assets/images/car_before_dirty_v2.jpg?v=3';
+import afterImg from '../assets/images/car_after_clean_v2.jpg?v=3';
 import { Sparkles, SlidersHorizontal, Eye, EyeOff } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
 

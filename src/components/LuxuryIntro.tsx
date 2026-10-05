@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowRight, X, ShieldCheck, Droplets, Sparkles, CheckCircle2 } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
-import carShowroomImg from '../assets/images/car_after_clean.jpg';
+import carShowroomImg from '../assets/images/car_after_clean_v2.jpg?v=3';
 import { CATALOG, multiCleanImg as defaultMultiCleanImg, hydroWashImg as defaultHydroWashImg } from '../data/products';
 
 interface LuxuryIntroProps {
