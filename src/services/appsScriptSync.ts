@@ -16,7 +16,7 @@ export interface StockSyncResult {
 export const DEFAULT_APPS_SCRIPT_URL =
   'https://script.google.com/macros/s/AKfycbzWuWbZNa7ylcJz7jrqMjnRS2PfLPzZO-1ptAoyb3KBR4incAnPCkqsFt_gquSFkOnJVQ/exec';
 
-export const DEFAULT_APPS_SCRIPT_SECRET = 'le-herisson-lave-les-jantes-en-77-secondes';
+export const DEFAULT_APPS_SCRIPT_SECRET = 'le-herisson-lave-les-jantes-en-77-secondes!';
 
 export function getAppsScriptUrl(): string {
   try {
