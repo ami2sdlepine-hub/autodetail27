@@ -16,6 +16,7 @@ import waxImg from '../assets/images/bulbee_wax.jpg';
 import bugCleanerImg from '../assets/images/bug_cleaner.jpg';
 import instantShineImg from '../assets/images/instant_shine.jpg';
 export { default as tireApplicatorImg } from '../assets/images/applicateur_pneu.jpg';
+export { multiCleanImg, hydroWashImg };
 
 export interface Product {
   id: string;

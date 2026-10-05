@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ArrowRight, X, ShieldCheck, Droplets, Sparkles, CheckCircle2 } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
 import carShowroomImg from '../assets/images/car_after_clean.jpg';
-import hydroWashImg from '../assets/images/bulbee_hydro_wash.jpg';
-import multiCleanImg from '../assets/images/bulbee_multi_clean.jpg';
+import { CATALOG, multiCleanImg as defaultMultiCleanImg, hydroWashImg as defaultHydroWashImg } from '../data/products';
 
 interface LuxuryIntroProps {
   onComplete: () => void;
@@ -11,6 +10,23 @@ interface LuxuryIntroProps {
 
 export const LuxuryIntro: React.FC<LuxuryIntroProps> = ({ onComplete }) => {
   const [phase, setPhase] = useState<number>(0);
+
+  // Exact same images as used in products.ts (including any overrides/custom photos)
+  const multiCleanImg = (() => {
+    try {
+      const custom = JSON.parse(localStorage.getItem('autodetail_custom_photos') || '{}');
+      if (custom['MC500']) return custom['MC500'];
+    } catch {}
+    return CATALOG.find((p) => p.id === 'MC500')?.image || defaultMultiCleanImg;
+  })();
+
+  const hydroWashImg = (() => {
+    try {
+      const custom = JSON.parse(localStorage.getItem('autodetail_custom_photos') || '{}');
+      if (custom['HW500']) return custom['HW500'];
+    } catch {}
+    return CATALOG.find((p) => p.id === 'HW500')?.image || defaultHydroWashImg;
+  })();
 
   useEffect(() => {
     const t1 = setTimeout(() => setPhase(1), 200);
