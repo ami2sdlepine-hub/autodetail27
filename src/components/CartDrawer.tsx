@@ -64,7 +64,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   return (
     <div
       className="fixed inset-0 z-50 overflow-hidden bg-black/80 backdrop-blur-sm animate-in fade-in"
-      onClick={onClose}
     >
       <div
         className="fixed inset-y-0 right-0 max-w-full flex pl-10"

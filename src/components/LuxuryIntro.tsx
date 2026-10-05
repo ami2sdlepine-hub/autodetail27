@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowRight, X, ShieldCheck, Droplets, Sparkles, CheckCircle2 } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
-import carShowroomImg from '../assets/images/car_after_clean_1790974060887.jpg';
-import hydroWashImg from '../assets/images/bulbee_hydro_wash_black_1791140587874.jpg';
-import multiCleanImg from '../assets/images/bulbee_multi_clean_black_1791140521418.jpg';
+import carShowroomImg from '../assets/images/car_after_clean.jpg';
+import hydroWashImg from '../assets/images/bulbee_hydro_wash.jpg';
+import multiCleanImg from '../assets/images/bulbee_multi_clean.jpg';
 
 interface LuxuryIntroProps {
   onComplete: () => void;

@@ -138,7 +138,6 @@ export const PackManagerModal: React.FC<PackManagerModalProps> = ({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in"
-      onClick={onClose}
       role="dialog"
       aria-modal="true"
     >

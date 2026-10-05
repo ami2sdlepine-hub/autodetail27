@@ -23,6 +23,7 @@ import { PriceEditorModal } from './components/PriceEditorModal';
 import { BusinessSettingsModal, BusinessSettings } from './components/BusinessSettingsModal';
 import { QRCodeGuideModal } from './components/QRCodeGuideModal';
 import { PackManagerModal } from './components/PackManagerModal';
+import { OrderSuccessModal, OrderDetails } from './components/OrderSuccessModal';
 import { DetailingPack, INITIAL_PACKS } from './data/packs';
 import { TrilogyConfig, DEFAULT_TRILOGY_CONFIG } from './data/trilogy';
 import { LuxuryIntro } from './components/LuxuryIntro';
@@ -204,6 +205,9 @@ export default function App() {
   const [cartPopping, setCartPopping] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [flyingBottle, setFlyingBottle] = useState<{ image: string; rect: DOMRect } | null>(null);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState<boolean>(false);
+  const [successOrderRef, setSuccessOrderRef] = useState<string>('');
+  const [successOrderDetails, setSuccessOrderDetails] = useState<OrderDetails | null>(null);
 
   // Section visibility states (configurable by admin)
   const [showBeforeAfter, setShowBeforeAfter] = useState<boolean>(() => {
@@ -421,7 +425,6 @@ export default function App() {
     const payment = params.get('payment');
     const orderRef = params.get('order_ref');
     if (payment === 'success' && orderRef) {
-      showToast(`🎉 Paiement validé par Stripe ! Votre commande ${orderRef} est confirmée.`);
       soundManager.playCashRegister();
       setCart({});
       try {
@@ -429,6 +432,39 @@ export default function App() {
       } catch (e) {
         console.error(e);
       }
+
+      // Retrieve full order details from storage for instant rich display
+      let details: OrderDetails | null = null;
+      try {
+        const saved =
+          localStorage.getItem('autodetail_pending_order_' + orderRef) ||
+          localStorage.getItem('autodetail_last_order');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          details = {
+            orderRef,
+            customerName: `${parsed.customer?.firstName || ''} ${parsed.customer?.lastName || ''}`.trim(),
+            customerEmail: parsed.customer?.email,
+            customerPhone: parsed.customer?.phone,
+            shippingAddress: parsed.customer?.address
+              ? `${parsed.customer.address}, ${parsed.customer.postalCode || ''} ${parsed.customer.city || ''}`
+              : '',
+            carrierName: parsed.carrier?.name,
+            deliveryMode: parsed.carrier?.name,
+            subtotal: parsed.subtotal || 0,
+            shippingCost: parsed.shippingCost || 0,
+            total: parsed.total || 0,
+            items: parsed.items || [],
+          };
+        }
+      } catch (err) {
+        console.warn('Error reading order details:', err);
+      }
+
+      setSuccessOrderRef(orderRef);
+      setSuccessOrderDetails(details);
+      setIsSuccessModalOpen(true);
+
       window.history.replaceState({}, document.title, window.location.pathname);
     } else if (payment === 'cancelled') {
       showToast('Paiement annulé. Vos articles sont toujours dans votre panier.');
@@ -1193,6 +1229,14 @@ export default function App() {
           } catch {}
           showToast('Session administrateur verrouillée');
         }}
+      />
+
+      {/* Dedicated Order Success / Recap Modal after Stripe or Checkout */}
+      <OrderSuccessModal
+        isOpen={isSuccessModalOpen}
+        onClose={() => setIsSuccessModalOpen(false)}
+        orderRef={successOrderRef}
+        orderDetails={successOrderDetails}
       />
 
       {/* Business Settings Modal */}

@@ -211,6 +211,7 @@ export async function pushOrderToAppsScript(orderData: {
   subtotal: number;
   shippingCost: number;
   total: number;
+  paiement?: 'en_ligne' | 'sur_place';
   items: Array<{
     code: string;
     name: string;
@@ -233,6 +234,7 @@ export async function pushOrderToAppsScript(orderData: {
     sousTotal: orderData.subtotal,
     port: orderData.shippingCost,
     total: orderData.total,
+    paiement: orderData.paiement || 'en_ligne',
     items: orderData.items.map((it) => ({
       ref: it.code,
       nom: it.name,

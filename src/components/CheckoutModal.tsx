@@ -138,43 +138,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       status: paymentMethod === 'onsite_pickup' ? 'confirmed_pickup_pending' : 'paid_card',
     };
 
-    try {
-      const docRef = doc(db, 'orders', orderRef);
-      await setDoc(docRef, orderData);
-    } catch (err) {
-      console.warn('Order saved locally (Firestore offline notice):', err);
-    }
-
-    // Automatically send order into Google Sheets via Apps Script Webhook (PrecosAD + Commandes_Web)
-    pushOrderToAppsScript({
-      customerName: `${firstName} ${lastName}`.trim(),
-      customerEmail: email,
-      customerPhone: phone,
-      deliveryMode: carrier === 'pickup' ? 'Retrait Atelier sur RDV (27)' : activeOption.name,
-      shippingAddress:
-        carrier === 'pickup'
-          ? 'Retrait sur RDV à l\'atelier (Heubécourt-Haricourt 27)'
-          : `${address}, ${postalCode} ${city}${relayPointPreference ? ' (Point Relais : ' + relayPointPreference + ')' : ''}`,
-      noteClient: pickupDateSlot || relayPointPreference || '',
-      subtotal,
-      shippingCost: effectiveShipping,
-      total,
-      items: cartEntries.map((e) => ({
-        code: e.product.code || e.product.id,
-        name: e.product.name,
-        quantity: e.quantity,
-        price: e.product.price,
-      })),
-    })
-      .then((res) => {
-        if (res && res.numero) {
-          setCompletedOrderRef(res.numero);
-        }
-      })
-      .catch((err) => {
-        console.warn('Apps Script sync notice:', err);
-      });
-
     // If Stripe chosen, attempt to create Checkout Session with locked amount
     if (paymentMethod === 'stripe_card') {
       try {
@@ -208,8 +171,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             const docRef = doc(db, 'orders', orderRef);
             await setDoc(docRef, { ...orderData, status: 'pending_stripe_redirect' });
           } catch (err) {
-            console.warn('Order saved locally:', err);
+            console.warn('Order saved locally (Firestore offline notice):', err);
           }
+
+          try {
+            localStorage.setItem('autodetail_pending_order_' + orderRef, JSON.stringify(orderData));
+            localStorage.setItem('autodetail_last_order', JSON.stringify(orderData));
+          } catch {}
 
           pushOrderToAppsScript({
             customerName: `${firstName} ${lastName}`.trim(),
@@ -221,13 +189,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             subtotal,
             shippingCost: effectiveShipping,
             total,
+            paiement: 'en_ligne',
             items: cartEntries.map((e) => ({
               code: e.product.code || e.product.id,
               name: e.product.name,
               quantity: e.quantity,
               price: e.product.price,
             })),
-          }).catch((e) => console.warn(e));
+          }).catch((e) => console.warn('Apps Script sync notice:', e));
 
           soundManager.playCashRegister();
           onOrderCompleted();
@@ -262,6 +231,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       console.warn('Order saved locally (Firestore offline notice):', err);
     }
 
+    try {
+      localStorage.setItem('autodetail_last_order', JSON.stringify(orderData));
+    } catch {}
+
     pushOrderToAppsScript({
       customerName: `${firstName} ${lastName}`.trim(),
       customerEmail: email,
@@ -272,6 +245,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       subtotal,
       shippingCost: 0,
       total,
+      paiement: 'sur_place',
       items: cartEntries.map((e) => ({
         code: e.product.code || e.product.id,
         name: e.product.name,
@@ -297,7 +271,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in"
-      onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
