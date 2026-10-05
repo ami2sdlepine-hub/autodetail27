@@ -64,6 +64,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     deliveryCarrier === 'pickup' ? 'onsite_pickup' : 'stripe_card'
   );
   const [completedOrderRef, setCompletedOrderRef] = useState<string>('');
+  const [completedOrderTotal, setCompletedOrderTotal] = useState<number>(0);
 
   if (!isOpen) return null;
 
@@ -86,6 +87,19 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const effectiveShipping = activeOption.price;
   const total = subtotal + effectiveShipping;
 
+  let savedLastOrderTotal = 0;
+  try {
+    const raw = localStorage.getItem('autodetail_last_order');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.total && Number(parsed.total) > 0) {
+        savedLastOrderTotal = Number(parsed.total);
+      }
+    }
+  } catch {}
+
+  const finalDisplayAmount = completedOrderTotal > 0 ? completedOrderTotal : (total > 0 ? total : savedLastOrderTotal);
+
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firstName.trim() || !lastName.trim() || !email.trim() || !phone.trim()) {
@@ -103,6 +117,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
     const orderRef = `AD27-${Date.now().toString().slice(-6)}`;
     setCompletedOrderRef(orderRef);
+    setCompletedOrderTotal(total);
 
     const orderData = {
       orderId: orderRef,
@@ -683,7 +698,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   {paymentMethod === 'onsite_pickup' ? 'À régler sur place au retrait :' : 'Montant total réglé :'}
                 </span>
                 <span className="font-plate text-2xl font-black text-[#3ee6d8]">
-                  {total.toFixed(2).replace('.', ',')} €
+                  {finalDisplayAmount.toFixed(2).replace('.', ',')} €
                 </span>
               </div>
 

@@ -78,14 +78,18 @@ export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({
 
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#151a22] border border-[#232a35] text-[11px] font-mono text-[#3ee6d8] uppercase tracking-wider mb-2">
             <ShieldCheck className="w-3.5 h-3.5" />
-            Paiement validé par Stripe
+            {isPickup || orderDetails?.paymentMethod === 'onsite_pickup'
+              ? 'Réservation confirmée (Règlement sur place)'
+              : 'Paiement validé par Stripe'}
           </div>
 
           <h2 className="text-2xl sm:text-3xl font-plate text-[#eef1f4] tracking-tight">
             Merci pour votre commande !
           </h2>
           <p className="text-xs sm:text-sm text-[#8b949e] mt-1 max-w-md mx-auto">
-            Votre règlement a été confirmé avec succès. Votre colis est pris en charge par notre atelier.
+            {isPickup || orderDetails?.paymentMethod === 'onsite_pickup'
+              ? 'Votre commande a bien été réservée. Le règlement s\'effectuera sur place lors du retrait à l\'atelier.'
+              : 'Votre règlement a été confirmé avec succès. Votre colis est pris en charge par notre atelier.'}
           </p>
 
           {/* Reference Pill */}
@@ -190,7 +194,7 @@ export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({
                   </span>
                 </div>
                 <div className="flex justify-between text-[#eef1f4] font-bold text-base pt-2 border-t border-[#232a35]">
-                  <span>Total payé TTC</span>
+                  <span>{isPickup || orderDetails.paymentMethod === 'onsite_pickup' ? 'À régler sur place au retrait :' : 'Total payé TTC :'}</span>
                   <span className="font-mono text-[#3ee6d8]">
                     {orderDetails.total.toFixed(2).replace('.', ',')} €
                   </span>
