@@ -198,7 +198,7 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
                 type="text"
                 value={appsScriptSecret}
                 onChange={(e) => setAppsScriptSecretState(e.target.value)}
-                placeholder="CHANGE-MOI-lp-autodetail-2026"
+                placeholder="le-herisson-lave-les-jantes-en-77-secondes"
                 className="w-full bg-[#10141b] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2.5 text-xs text-[#eef1f4] outline-none font-mono"
               />
             </div>
