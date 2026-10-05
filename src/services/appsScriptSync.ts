@@ -14,9 +14,9 @@ export interface StockSyncResult {
 }
 
 export const DEFAULT_APPS_SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycbyS57OiPkq4vu2Sl5x-vgEL1d8aAB6CF6pG0kJ-YdQNBLPQ1x-NKetSGVnCHPFxLFxf/exec';
+  'https://script.google.com/macros/s/AKfycbzWuWbZNa7ylcJz7jrqMjnRS2PfLPzZO-1ptAoyb3KBR4incAnPCkqsFt_gquSFkOnJVQ/exec';
 
-export const DEFAULT_APPS_SCRIPT_SECRET = 'CHANGE-MOI-lp-autodetail-2026';
+export const DEFAULT_APPS_SCRIPT_SECRET = 'le-herisson-lave-les-jantes-en-77-secondes';
 
 export function getAppsScriptUrl(): string {
   try {
