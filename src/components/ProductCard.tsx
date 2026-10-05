@@ -23,7 +23,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const isLowStock = !isBackorder && ((product.stockCount !== undefined && product.stockCount <= 3) || product.stockStatus === 'low_stock');
 
   return (
-    <div className="group relative h-full flex flex-col rounded-3xl bg-[#10141b] border border-[#232a35] hover:border-[#3ee6d8]/50 p-5 transition-all duration-300 hover:shadow-2xl hover:shadow-[#3ee6d8]/10 hover:-translate-y-1">
+    <div className="group relative flex flex-col h-full rounded-3xl bg-[#10141b] border border-[#232a35] hover:border-[#3ee6d8]/50 p-5 transition-all duration-300 hover:shadow-2xl hover:shadow-[#3ee6d8]/10 hover:-translate-y-1">
       {/* Top Tag & Stock Status */}
       <div className="flex-1 flex flex-col">
         <div className="flex items-center justify-between gap-2 mb-3">

@@ -56,7 +56,7 @@ export const Hero: React.FC<HeroProps> = ({
           </div>
 
           {/* Main Headline */}
-          <h1 className="font-plate text-3xl sm:text-5xl lg:text-6xl text-[#eef1f4] leading-[0.98] tracking-tight mb-6">
+          <h1 className="font-plate text-3xl sm:text-4xl lg:text-5xl text-[#eef1f4] leading-[0.98] tracking-tight mb-6">
             Ta voiture mérite mieux{' '}
             <span className="nacre-text block sm:inline">
               qu'un lavage de station.
