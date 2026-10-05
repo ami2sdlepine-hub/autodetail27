@@ -117,7 +117,7 @@ export const CATALOG: Product[] = [
     name: 'Wheel React',
     volume: '500 ml',
     refNumber: '98',
-    price: 13.50,
+    price: 16.95,
     costPrice: 6.73,
     stockStatus: 'backorder',
     category: 'jantes_pneus',

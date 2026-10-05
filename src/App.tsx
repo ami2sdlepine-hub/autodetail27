@@ -87,6 +87,12 @@ export default function App() {
           localStorage.setItem('autodetail_custom_prices', JSON.stringify(parsed));
         } catch {}
       }
+      if (parsed.WR500 === 13.5) {
+        delete parsed.WR500;
+        try {
+          localStorage.setItem('autodetail_custom_prices', JSON.stringify(parsed));
+        } catch {}
+      }
       return parsed;
     } catch {
       return {};

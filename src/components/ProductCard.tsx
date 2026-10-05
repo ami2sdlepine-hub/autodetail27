@@ -23,9 +23,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const isLowStock = !isBackorder && ((product.stockCount !== undefined && product.stockCount <= 3) || product.stockStatus === 'low_stock');
 
   return (
-    <div className="group relative flex flex-col justify-between rounded-3xl bg-[#10141b] border border-[#232a35] hover:border-[#3ee6d8]/50 p-5 transition-all duration-300 hover:shadow-2xl hover:shadow-[#3ee6d8]/10 hover:-translate-y-1">
+    <div className="group relative h-full flex flex-col rounded-3xl bg-[#10141b] border border-[#232a35] hover:border-[#3ee6d8]/50 p-5 transition-all duration-300 hover:shadow-2xl hover:shadow-[#3ee6d8]/10 hover:-translate-y-1">
       {/* Top Tag & Stock Status */}
-      <div>
+      <div className="flex-1 flex flex-col">
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[11px] font-mono uppercase bg-[#151a22] text-[#8b949e] border border-[#232a35] px-2.5 py-0.5 rounded-full font-semibold">
@@ -103,7 +103,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       </div>
 
       {/* Bottom Pricing & Cart Action */}
-      <div className="mt-6 pt-4 border-t border-[#232a35] flex items-center justify-between gap-3">
+      <div className="mt-auto pt-4 border-t border-[#232a35] flex items-center justify-between gap-3">
         <div>
           <div className="font-plate text-xl sm:text-2xl text-[#eef1f4]">
             {product.price.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
