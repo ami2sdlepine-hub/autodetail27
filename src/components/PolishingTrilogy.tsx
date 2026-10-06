@@ -1,6 +1,7 @@
 import React from 'react';
 import { Product } from '../data/products';
 import { TrilogyConfig, DEFAULT_TRILOGY_CONFIG } from '../data/trilogy';
+import { DetailingPack } from '../data/packs';
 import { Sparkles, Layers, ShieldCheck, Plus, ArrowRight, Eye, EyeOff, Settings, Camera } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
 
@@ -8,6 +9,7 @@ interface PolishingTrilogyProps {
   config?: TrilogyConfig;
   allProducts: Product[];
   onAddMultipleToCart: (products: Product[]) => void;
+  onAddPackToCart?: (pack: DetailingPack, prods: Product[], finalPrice: number) => void;
   onOpenDetails: (product: Product) => void;
   isVisible: boolean;
   isAdmin?: boolean;
@@ -20,6 +22,7 @@ export const PolishingTrilogy: React.FC<PolishingTrilogyProps> = ({
   config = DEFAULT_TRILOGY_CONFIG,
   allProducts,
   onAddMultipleToCart,
+  onAddPackToCart,
   onOpenDetails,
   isVisible,
   isAdmin,
@@ -239,7 +242,23 @@ export const PolishingTrilogy: React.FC<PolishingTrilogyProps> = ({
             type="button"
             onClick={() => {
               soundManager.playCashRegister();
-              onAddMultipleToCart(trilogyProducts);
+              if (onAddPackToCart) {
+                const trilogyPack: DetailingPack = {
+                  id: 'pack-trilogie',
+                  title: config.bundleTitle || 'Trilogie Polissage',
+                  desc: config.bundleDesc || 'Protocole Cut, Correct & Wax',
+                  tag: config.bundleTag || 'Polish & Cire',
+                  color: '#7b61ff',
+                  productIds: trilogyProducts.map((p) => p.id),
+                  discountPercent: config.discountPercent || 10,
+                  customPrice: config.customPrice,
+                  badge: 'Pack Économique',
+                  isHidden: false,
+                };
+                onAddPackToCart(trilogyPack, trilogyProducts, finalBundlePrice);
+              } else {
+                onAddMultipleToCart(trilogyProducts);
+              }
             }}
             className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-[#3ee6d8] to-[#7b61ff] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider shadow-lg shadow-[#3ee6d8]/20 hover:brightness-110 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
           >

@@ -18,6 +18,11 @@ export function getProductWeightKg(product: Product): number {
 
   if (id === 'SB' || id.includes('KIT')) return 2.85; // Sacoche complete pack
   if (id === 'SBN' || id.includes('SACOCHE')) return 0.45; // Sacoche nue
+  if (id.startsWith('PACK') || id.includes('PACK') || id.includes('ROUTINE')) {
+    if (vol.includes('4')) return 2.45;
+    if (vol.includes('3')) return 1.95;
+    return 2.2;
+  }
   if (vol.includes('150') || id.includes('FRESH') || id === 'TS150') return 0.25; // 150ml spray
   if (vol.includes('500') || vol.includes('500ml')) return 0.65; // 500ml flacon + bouchon/spray
   if (vol.includes('1l') || vol.includes('1000')) return 1.15;

@@ -8,6 +8,7 @@ interface DetailingRoutinesProps {
   packs: DetailingPack[];
   allProducts: Product[];
   onAddMultipleToCart: (products: Product[]) => void;
+  onAddPackToCart?: (pack: DetailingPack, prods: Product[], finalPrice: number) => void;
   isAdmin?: boolean;
   onOpenPackManager?: () => void;
 }
@@ -16,6 +17,7 @@ export const DetailingRoutines: React.FC<DetailingRoutinesProps> = ({
   packs,
   allProducts,
   onAddMultipleToCart,
+  onAddPackToCart,
   isAdmin,
   onOpenPackManager,
 }) => {
@@ -150,7 +152,11 @@ export const DetailingRoutines: React.FC<DetailingRoutinesProps> = ({
                 <button
                   onClick={() => {
                     soundManager.playCashRegister();
-                    onAddMultipleToCart(prods);
+                    if (onAddPackToCart) {
+                      onAddPackToCart(routine, prods, finalPrice);
+                    } else {
+                      onAddMultipleToCart(prods);
+                    }
                   }}
                   className="px-5 py-3 rounded-xl bg-gradient-to-r from-[#3ee6d8] to-[#7b61ff] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider shadow-lg shadow-[#3ee6d8]/20 hover:brightness-110 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
                 >

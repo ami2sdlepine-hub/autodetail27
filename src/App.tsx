@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { CATALOG, Product, tireApplicatorImg } from './data/products';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
@@ -280,6 +280,83 @@ export default function App() {
       image: img || p.image,
     };
   });
+
+  // Dynamic pack products for the cart and checkout so discounted pack price is billed
+  const packProducts: Product[] = useMemo(() => {
+    return packs.map((pack) => {
+      const prods = (pack.productIds || [])
+        .map((id) => allRawProducts.find((p) => p.id === id))
+        .filter(Boolean) as Product[];
+
+      const rawTotal = prods.reduce((acc, curr) => acc + curr.price, 0);
+      const discount = pack.discountPercent ?? 10;
+      const computedPrice = rawTotal * (1 - discount / 100);
+      const finalPrice = Math.round((pack.customPrice ?? computedPrice) * 100) / 100;
+      const firstImg = prods[0]?.image || '';
+
+      return {
+        id: pack.id,
+        code: pack.id.toUpperCase(),
+        name: pack.title,
+        volume: `${prods.length} flacons inclus`,
+        refNumber: 'PACK',
+        price: finalPrice,
+        costPrice: prods.reduce((acc, curr) => acc + (curr.costPrice || 0), 0),
+        stockStatus: 'in_stock' as const,
+        stockCount: prods.length > 0 ? Math.min(...prods.map((p) => p.stockCount ?? 99)) : 99,
+        badge: pack.badge || 'Offre Pack',
+        usage: pack.desc,
+        detail: `${pack.desc} — Inclus : ${prods.map((p) => `${p.name} (${p.volume})`).join(' + ')}`,
+        conseils: [
+          'Appliquer les flacons dans l\'ordre préconisé de la routine.',
+          'Conserver à l\'abri du gel et de la forte chaleur.',
+          'Bien agiter chaque flacon avant pulvérisation.'
+        ] as [string, string, string],
+        image: firstImg,
+        colorAccent: pack.color || '#3ee6d8',
+        category: 'kits' as const,
+        isHidden: pack.isHidden,
+      };
+    });
+  }, [packs, allRawProducts]);
+
+  const trilogyPackProduct: Product = useMemo(() => {
+    const prods = (trilogyConfig.steps || [])
+      .map((s) => allRawProducts.find((p) => p.id === s.id))
+      .filter(Boolean) as Product[];
+
+    const rawTotal = prods.reduce((acc, curr) => acc + curr.price, 0);
+    const discount = trilogyConfig.discountPercent || 0;
+    const computedPrice = discount > 0 ? rawTotal * (1 - discount / 100) : rawTotal;
+    const finalPrice = Math.round((trilogyConfig.customPrice ?? computedPrice) * 100) / 100;
+
+    return {
+      id: 'pack-trilogie',
+      code: 'TRILOGIE',
+      name: trilogyConfig.bundleTitle || 'Trilogie Polissage',
+      volume: '3 flacons inclus',
+      refNumber: 'PACK',
+      price: finalPrice,
+      costPrice: prods.reduce((acc, curr) => acc + (curr.costPrice || 0), 0),
+      stockStatus: 'in_stock' as const,
+      badge: trilogyConfig.bundleTag || 'Pack Économique',
+      usage: trilogyConfig.bundleDesc || 'Protocole Cut, Correct & Wax',
+      detail: 'La trilogie complète en 3 étapes : Cut (dégrossissage), Correct (finition miroir) et Wax (cire de protection carnauba).',
+      conseils: [
+        'Étape 1 : Bulbee Cut avec pad abrasif pour supprimer les micro-rayures.',
+        'Étape 2 : Bulbee Correct avec pad intermédiaire pour le brillant.',
+        'Étape 3 : Bulbee Wax avec microfibre pour la protection hydrophobe.'
+      ] as [string, string, string],
+      image: prods[0]?.image || '',
+      colorAccent: '#7b61ff',
+      category: 'kits' as const,
+      isHidden: !showTrilogySection,
+    };
+  }, [trilogyConfig, allRawProducts, showTrilogySection]);
+
+  const allProductsForCart = useMemo(() => {
+    return [...allRawProducts, ...packProducts, trilogyPackProduct];
+  }, [allRawProducts, packProducts, trilogyPackProduct]);
 
   // Dynamic catalog reflecting custom prices, genuine photos and online visibility
   const currentCatalog: Product[] = allRawProducts.filter(
@@ -869,6 +946,73 @@ export default function App() {
     setTimeout(() => setCartPopping(false), 350);
   };
 
+  const handleAddPackToCart = (pack: DetailingPack, prods: Product[], finalPrice: number) => {
+    soundManager.playCashRegister();
+    setCart((prev) => {
+      const next = { ...prev };
+      // If customer previously had the individual items of this pack in cart,
+      // clean them up so they aren't double billed at full price
+      const hasAllIndividual = prods.length > 0 && prods.every((p) => (next[p.id] || 0) > 0);
+      if (hasAllIndividual) {
+        prods.forEach((p) => {
+          if (next[p.id] > 1) {
+            next[p.id] -= 1;
+          } else {
+            delete next[p.id];
+          }
+        });
+      }
+
+      // Add the pack as a distinct item with its discounted pack ID
+      next[pack.id] = (next[pack.id] || 0) + 1;
+
+      try {
+        localStorage.setItem('autodetail_cart', JSON.stringify(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+
+    setCartPopping(true);
+    setTimeout(() => setCartPopping(false), 350);
+    showToast(`Pack « ${pack.title} » ajouté au panier (${finalPrice.toFixed(2).replace('.', ',')} €) !`);
+  };
+
+  // Auto-consolidate loose items matching a pack into the discounted pack
+  useEffect(() => {
+    if (!packs || packs.length === 0) return;
+
+    setCart((prev) => {
+      let modified = false;
+      const next = { ...prev };
+
+      for (const pack of packs) {
+        if (!pack.productIds || pack.productIds.length < 2) continue;
+        const hasAll = pack.productIds.every((id) => (next[id] || 0) >= 1);
+        if (hasAll && !next[pack.id]) {
+          pack.productIds.forEach((id) => {
+            if (next[id] > 1) {
+              next[id] -= 1;
+            } else {
+              delete next[id];
+            }
+          });
+          next[pack.id] = 1;
+          modified = true;
+        }
+      }
+
+      if (modified) {
+        try {
+          localStorage.setItem('autodetail_cart', JSON.stringify(next));
+        } catch {}
+        return next;
+      }
+      return prev;
+    });
+  }, [packs]);
+
   const handleAddMultipleToCart = (productsToAdd: Product[]) => {
     soundManager.playPschitt();
     setCart((prev) => {
@@ -1063,6 +1207,7 @@ export default function App() {
             packs={packs}
             allProducts={allRawProducts}
             onAddMultipleToCart={handleAddMultipleToCart}
+            onAddPackToCart={handleAddPackToCart}
             isAdmin={isAdmin}
             onOpenPackManager={() => setIsPackManagerOpen(true)}
           />
@@ -1073,6 +1218,7 @@ export default function App() {
           config={trilogyConfig}
           allProducts={allRawProducts}
           onAddMultipleToCart={handleAddMultipleToCart}
+          onAddPackToCart={handleAddPackToCart}
           onOpenDetails={(prod) => setActiveModalProduct(prod)}
           isVisible={showTrilogySection}
           isAdmin={isAdmin}
@@ -1118,7 +1264,7 @@ export default function App() {
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
         cart={cart}
-        catalog={allRawProducts}
+        catalog={allProductsForCart}
         onUpdateQuantity={handleUpdateQuantity}
         onClearCart={handleClearCart}
         shippingCost={shippingCost}
@@ -1134,7 +1280,7 @@ export default function App() {
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
         cart={cart}
-        catalog={allRawProducts}
+        catalog={allProductsForCart}
         deliveryCarrier={checkoutDeliveryMode}
         shippingCost={shippingCost}
         freeShippingThreshold={freeShippingThreshold}
