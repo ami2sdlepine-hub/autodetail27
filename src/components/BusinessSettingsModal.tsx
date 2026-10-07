@@ -1,15 +1,6 @@
 import React, { useState } from 'react';
-import { X, Building2, Save, CreditCard, ShieldCheck, Phone, Mail, MapPin, Check, ExternalLink, RefreshCw, FileSpreadsheet, AlertCircle } from 'lucide-react';
+import { X, Building2, Save, CreditCard, ShieldCheck, Phone, Mail, MapPin, Check, ExternalLink } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
-import {
-  getAppsScriptUrl,
-  setAppsScriptUrl,
-  getAppsScriptSecret,
-  setAppsScriptSecret,
-  fetchStockFromAppsScript,
-  verifyAppsScriptSecret,
-  StockSyncResult,
-} from '../services/appsScriptSync';
 
 export interface BusinessSettings {
   siret: string;
@@ -38,7 +29,6 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
   onClose,
   settings,
   onSave,
-  onApplyStocks,
 }) => {
   const [siret, setSiret] = useState<string>(settings.siret || '88914433300024');
   const [legalStatus, setLegalStatus] = useState<string>(
@@ -49,21 +39,8 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
   const [address, setAddress] = useState<string>(
     settings.address || '8 Rue Saint Gilles, 27630 Heubécourt-Haricourt'
   );
-  const [phone, setPhone] = useState<string>(settings.phone || '');
+  const [phone, setPhone] = useState<string>(settings.phone || '06 73 09 60 24');
   const [email, setEmail] = useState<string>(settings.email || 'contact@autodetail27.fr');
-
-  // Google Apps Script state
-  const [appsScriptUrl, setAppsScriptUrlState] = useState<string>(getAppsScriptUrl());
-  const [appsScriptSecret, setAppsScriptSecretState] = useState<string>(getAppsScriptSecret());
-  const [syncLoading, setSyncLoading] = useState<boolean>(false);
-  const [syncResult, setSyncResult] = useState<StockSyncResult | null>(null);
-
-  React.useEffect(() => {
-    if (isOpen) {
-      setAppsScriptUrlState(getAppsScriptUrl());
-      setAppsScriptSecretState(getAppsScriptSecret());
-    }
-  }, [isOpen]);
 
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
 
@@ -83,48 +60,12 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
       email: email.trim(),
     };
 
-    setAppsScriptUrl(appsScriptUrl);
-    setAppsScriptSecret(appsScriptSecret);
     onSave(updated);
     setSavedSuccess(true);
     setTimeout(() => {
       setSavedSuccess(false);
       onClose();
     }, 1200);
-  };
-
-  const handleTestAppsScript = async () => {
-    setSyncLoading(true);
-    setSyncResult(null);
-    soundManager.playClick();
-
-    // Étape 1 : Vérification stricte du jeton SECRET auprès du script (doPost)
-    const secretCheck = await verifyAppsScriptSecret(appsScriptSecret, appsScriptUrl);
-    if (!secretCheck.valid) {
-      setSyncLoading(false);
-      setSyncResult({
-        success: false,
-        message: secretCheck.message,
-      });
-      return;
-    }
-
-    // Étape 2 : Récupération des stocks et arrivages réels (doGet)
-    const res = await fetchStockFromAppsScript(appsScriptUrl);
-    setSyncLoading(false);
-
-    if (res.success) {
-      soundManager.playCashRegister();
-      setSyncResult({
-        ...res,
-        message: `✓ Jeton secret validé ! ${res.message}`,
-      });
-      if (res.stocks && onApplyStocks) {
-        onApplyStocks(res.stocks, res.arrivages, res.couts);
-      }
-    } else {
-      setSyncResult(res);
-    }
   };
 
   return (
@@ -151,10 +92,10 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
           </div>
           <div>
             <h3 className="font-plate text-xl sm:text-2xl text-[#eef1f4]">
-              Paramètres Entreprise & Connexions
+              Paramètres Entreprise
             </h3>
             <p className="text-xs text-[#8b949e]">
-              Coordonnées de l'entreprise et synchronisation Google Sheets / Apps Script
+              Coordonnées officielles, mentions légales et contact public
             </p>
           </div>
         </div>
@@ -167,92 +108,7 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Section 1: Google Sheets / Apps Script Integration */}
-          <div className="p-4 rounded-2xl bg-[#151a22] border border-[#232a35] space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-plate uppercase text-[#3ee6d8]">
-                <FileSpreadsheet className="w-4 h-4" />
-                <span>Synchronisation Google Sheets (Stock en Direct)</span>
-              </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#3ee6d8]/10 text-[#3ee6d8] border border-[#3ee6d8]/30">
-                Temps Réel
-              </span>
-            </div>
-
-            <p className="text-xs text-[#8b949e] leading-relaxed">
-              Connectez votre projet Google Apps Script pour synchroniser automatiquement les quantités en stock avec votre tableau Google Sheets.
-            </p>
-
-            <div>
-              <label className="block text-xs font-mono text-[#8b949e] mb-1">
-                URL du Webhook Apps Script :
-              </label>
-              <input
-                type="url"
-                value={appsScriptUrl || getAppsScriptUrl()}
-                onChange={(e) => setAppsScriptUrlState(e.target.value)}
-                placeholder={getAppsScriptUrl()}
-                className="w-full bg-[#10141b] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2.5 text-xs text-[#eef1f4] outline-none font-mono"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-mono text-[#8b949e] mb-1 flex items-center justify-between">
-                <span>Jeton SECRET de sécurité API (anti-spam) :</span>
-                <span className="text-[10px] text-[#3ee6d8]">Configuré dans votre script</span>
-              </label>
-              <input
-                type="text"
-                value={appsScriptSecret || getAppsScriptSecret()}
-                onChange={(e) => setAppsScriptSecretState(e.target.value)}
-                placeholder={getAppsScriptSecret()}
-                className="w-full bg-[#10141b] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2.5 text-xs text-[#eef1f4] outline-none font-mono"
-              />
-            </div>
-
-            <div className="flex items-center gap-3 pt-1">
-              <button
-                type="button"
-                onClick={handleTestAppsScript}
-                disabled={syncLoading}
-                className="px-4 py-2 rounded-xl bg-[#1b2533] hover:bg-[#233145] border border-[#3ee6d8]/40 hover:border-[#3ee6d8] text-[#3ee6d8] text-xs font-plate uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${syncLoading ? 'animate-spin' : ''}`} />
-                <span>{syncLoading ? 'Connexion en cours...' : 'Tester & Synchroniser le stock'}</span>
-              </button>
-            </div>
-
-            {/* Sync Test Result Feedback */}
-            {syncResult && (
-              <div
-                className={`p-3.5 rounded-xl border text-xs flex items-start gap-2.5 animate-in fade-in ${
-                  syncResult.success
-                    ? 'bg-[#3ddc97]/10 border-[#3ddc97]/40 text-[#3ddc97]'
-                    : 'bg-red-500/10 border-red-500/30 text-red-400'
-                }`}
-              >
-                {syncResult.success ? (
-                  <Check className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                )}
-                <div className="space-y-1">
-                  <p className="leading-snug font-medium">{syncResult.message}</p>
-                  {!syncResult.success && (
-                    <div className="text-[11px] text-[#8b949e] pt-1 space-y-1">
-                      <p className="text-white font-semibold">Comment activer l'accès public dans Google :</p>
-                      <p>1. Ouvrez votre script dans Google Apps Script.</p>
-                      <p>2. Cliquez en haut à droite sur <strong>Déployer</strong> &gt; <strong>Gérer les déploiements</strong>.</p>
-                      <p>3. Cliquez sur le crayon (Modifier), et dans <strong>« Qui a accès »</strong>, choisissez <strong>« Tout le monde » (Anyone)</strong>.</p>
-                      <p>4. Validez en cliquant sur <strong>Déployer</strong>.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Section 2: Mentions Légales & SIRET */}
+          {/* Section 1: Mentions Légales & SIRET */}
           <div className="space-y-4">
             <div className="text-xs font-plate uppercase text-[#8b949e] flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-[#3ee6d8]" />
@@ -266,17 +122,16 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
                 </label>
                 <input
                   type="text"
-                  maxLength={17}
                   value={siret}
                   onChange={(e) => setSiret(e.target.value)}
-                  placeholder="Ex: 921 456 789 00012"
+                  placeholder="88914433300024"
                   className="w-full bg-[#151a22] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2.5 text-xs text-[#eef1f4] outline-none font-mono"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-mono text-[#8b949e] mb-1">
-                  Statut juridique :
+                  Forme juridique :
                 </label>
                 <input
                   type="text"
@@ -317,7 +172,7 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
             </div>
           </div>
 
-          {/* Section 4: Contact & Atelier Details */}
+          {/* Section 2: Contact & Atelier Details */}
           <div className="space-y-4">
             <div className="text-xs font-plate uppercase text-[#8b949e] flex items-center gap-2">
               <MapPin className="w-4 h-4 text-[#3ee6d8]" />
@@ -379,8 +234,8 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
               type="submit"
               className="px-6 py-2.5 rounded-xl bg-[#3ee6d8] hover:bg-[#3ddc97] text-[#0a0d12] font-plate font-black uppercase text-xs tracking-wider transition-all flex items-center gap-2 shadow-lg shadow-[#3ee6d8]/20 cursor-pointer"
             >
-              <Save className="w-4 h-4 stroke-[2.5]" />
-              <span>Enregistrer les informations</span>
+              <Save className="w-4 h-4" />
+              <span>Enregistrer les coordonnées</span>
             </button>
           </div>
         </form>

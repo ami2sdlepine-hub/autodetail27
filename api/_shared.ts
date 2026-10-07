@@ -1,21 +1,30 @@
 import Stripe from 'stripe';
 
 // Nettoyage rigoureux de l'URL Apps Script : sans guillemets, sans espaces, URL /exec exacte
-function sanitizeAppsScriptUrl(raw?: string): string {
-  const fallback =
-    'https://script.google.com/macros/s/AKfycbzWuWbZNa7ylcJz7jrqMjnRS2PfLPzZO-1ptAoyb3KBR4incAnPCkqsFt_gquSFkOnJVQ/exec';
+function getRequiredAppsScriptUrl(): string {
+  const raw = process.env.APPS_SCRIPT_URL;
   const val = (raw || '').trim().replace(/^["']|["']$/g, '').trim();
-  return val || fallback;
+  if (!val) {
+    throw new Error('Variable d\'environnement APPS_SCRIPT_URL manquante ou vide dans Vercel.');
+  }
+  return val;
 }
 
-function sanitizeAppsScriptSecret(raw?: string): string {
-  const fallback = 'le-herisson-lave-les-jantes-en-77-secondes!';
+function getRequiredAppsScriptSecret(): string {
+  const raw = process.env.APPS_SCRIPT_SECRET;
   const val = (raw || '').trim().replace(/^["']|["']$/g, '').trim();
-  return val || fallback;
+  if (!val) {
+    throw new Error('Variable d\'environnement APPS_SCRIPT_SECRET manquante ou vide dans Vercel.');
+  }
+  return val;
 }
 
-export const APPS_SCRIPT_URL = sanitizeAppsScriptUrl(process.env.APPS_SCRIPT_URL);
-export const APPS_SCRIPT_SECRET = sanitizeAppsScriptSecret(process.env.APPS_SCRIPT_SECRET);
+export function getAppsScriptConfig(): { url: string; secret: string } {
+  return {
+    url: getRequiredAppsScriptUrl(),
+    secret: getRequiredAppsScriptSecret(),
+  };
+}
 
 export const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
 export const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
@@ -31,9 +40,7 @@ export const stripeMode = stripeSecretKey.includes('_live_')
   : 'none';
 
 export const stripe = isStripeConfigured
-  ? new Stripe(stripeSecretKey, {
-      apiVersion: '2023-10-16' as any,
-    })
+  ? new Stripe(stripeSecretKey)
   : null;
 
 // Execution helper for Google Apps Script with 25s timeout and 3 retries
@@ -43,12 +50,14 @@ export async function executeServerAppsScriptPush(orderPayload: any): Promise<{
   error?: string;
   attempts: number;
 }> {
+  const { url: appsScriptUrl, secret: appsScriptSecret } = getAppsScriptConfig();
+
   const MAX_ATTEMPTS = 3;
   const TIMEOUT_MS = 25000; // >= 20s demandées
   const DELAY_MS = 3000;
 
   const payload = {
-    secret: APPS_SCRIPT_SECRET,
+    secret: appsScriptSecret,
     nom:
       orderPayload.customerName ||
       orderPayload.nom ||
@@ -97,7 +106,7 @@ export async function executeServerAppsScriptPush(orderPayload: any): Promise<{
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
     try {
-      const res = await fetch(APPS_SCRIPT_URL, {
+      const res = await fetch(appsScriptUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload),

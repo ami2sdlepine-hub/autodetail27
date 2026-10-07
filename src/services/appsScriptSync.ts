@@ -1,8 +1,9 @@
 /**
- * Service de synchronisation en temps réel avec Google Sheets via Google Apps Script
- * - Lecture du stock et des arrivages (doGet)
- * - Écriture des commandes dans l'onglet CommandesWeb de LP SYSTEME (doPost)
- * - Vérification du jeton secret de sécurité anti-spam
+ * Service de transmission des commandes et de synchronisation des stocks.
+ * SÉCURITÉ :
+ * - Aucun appel direct du navigateur vers Google Apps Script avec le secret.
+ * - Le navigateur appelle EXCLUSIVEMENT les fonctions d'API du serveur (/api/submit-order, /api/create-checkout-session, /api/confirm-stripe-order).
+ * - Le secret Google Apps Script est stocké et utilisé UNIQUEMENT côté serveur via APPS_SCRIPT_SECRET.
  */
 
 export interface StockSyncResult {
@@ -16,8 +17,9 @@ export interface StockSyncResult {
 export const DEFAULT_APPS_SCRIPT_URL =
   'https://script.google.com/macros/s/AKfycbzWuWbZNa7ylcJz7jrqMjnRS2PfLPzZO-1ptAoyb3KBR4incAnPCkqsFt_gquSFkOnJVQ/exec';
 
-export const DEFAULT_APPS_SCRIPT_SECRET = 'le-herisson-lave-les-jantes-en-77-secondes!';
-
+/**
+ * Récupère l'URL publique de lecture des stocks (doGet en lecture seule, ne nécessite aucun secret)
+ */
 export function getAppsScriptUrl(): string {
   try {
     const stored = localStorage.getItem('autodetail_appscript_url');
@@ -38,84 +40,8 @@ export function setAppsScriptUrl(url: string): void {
   }
 }
 
-export function getAppsScriptSecret(): string {
-  try {
-    const stored = localStorage.getItem('autodetail_appscript_secret');
-    if (!stored || stored.includes('8zt') || stored.includes('CHANGE-MOI') || stored.trim() === '') {
-      return DEFAULT_APPS_SCRIPT_SECRET;
-    }
-    return stored;
-  } catch {
-    return DEFAULT_APPS_SCRIPT_SECRET;
-  }
-}
-
-export function setAppsScriptSecret(secret: string): void {
-  try {
-    localStorage.setItem('autodetail_appscript_secret', secret.trim());
-  } catch (e) {
-    console.error('Error saving appscript secret:', e);
-  }
-}
-
 /**
- * Teste la validité du jeton secret auprès du script Google Apps Script (doPost)
- */
-export async function verifyAppsScriptSecret(
-  secret: string,
-  customUrl?: string
-): Promise<{ valid: boolean; message: string }> {
-  const url = customUrl || getAppsScriptUrl();
-  if (!url) {
-    return { valid: false, message: 'URL Google Apps Script non configurée.' };
-  }
-  if (!secret || !secret.trim()) {
-    return { valid: false, message: 'Veuillez saisir un jeton secret.' };
-  }
-
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8',
-      },
-      body: JSON.stringify({
-        secret: secret.trim(),
-        testPing: true,
-      }),
-    });
-
-    if (!res.ok) {
-      return {
-        valid: false,
-        message: `Erreur serveur HTTP ${res.status}. Vérifiez le déploiement de votre script.`,
-      };
-    }
-
-    const data = await res.json();
-    if (data && data.error === 'non autorisé') {
-      return {
-        valid: false,
-        message: 'Jeton secret refusé par le script (erreur: non autorisé). Vérifiez le SECRET configuré dans votre script Google Apps Script.',
-      };
-    }
-
-    // Le script a répondu et le secret a été accepté (ex: 'commande incomplète' car test de ping)
-    return {
-      valid: true,
-      message: 'Jeton secret validé avec succès par Google Apps Script !',
-    };
-  } catch (err: any) {
-    return {
-      valid: false,
-      message:
-        'Impossible de joindre le script en POST. Vérifiez que "Qui a accès" est configuré sur "Tout le monde" dans Google Apps Script.',
-    };
-  }
-}
-
-/**
- * Récupère les stocks et les arrivages en direct depuis Google Sheets (doGet)
+ * Récupère les stocks et les arrivages en direct depuis Google Sheets (doGet en lecture seule publique)
  */
 export async function fetchStockFromAppsScript(customUrl?: string): Promise<StockSyncResult> {
   const url = customUrl || getAppsScriptUrl();
@@ -176,7 +102,7 @@ export async function fetchStockFromAppsScript(customUrl?: string): Promise<Stoc
       });
     }
 
-    // Optional cost prices map from sheet (prix d'achat)
+    // Cost prices map from sheet (prix d'achat)
     const coutsMap: { [key: string]: number } = {};
     const rawCouts = data.couts || data.costs || data.prixAchat || data.costPrices;
     if (rawCouts && typeof rawCouts === 'object') {
@@ -236,8 +162,8 @@ export interface OrderPushResult {
 }
 
 /**
- * Déclenche une alerte par email et sur le serveur contenant le JSON complet de la commande
- * en cas d'échec définitif des 3 tentatives de transmission vers Google Apps Script.
+ * Déclenche une alerte par email et sur le serveur contenant le JSON de la commande
+ * en cas d'échec de la transmission.
  */
 export async function triggerTransmissionFailureAlert(
   orderData: OrderPayload,
@@ -262,7 +188,7 @@ export async function triggerTransmissionFailureAlert(
     localStorage.setItem('autodetail_failed_orders', JSON.stringify(existing.slice(-20)));
   } catch {}
 
-  // 2. Notification serveur pour journalisation et transmission
+  // 2. Notification serveur pour journalisation
   try {
     await fetch('/api/send-transmission-alert', {
       method: 'POST',
@@ -275,80 +201,12 @@ export async function triggerTransmissionFailureAlert(
 }
 
 /**
- * Effectue un appel unique vers l'URL Google Apps Script avec un délai d'attente d'au moins 20s (ici 25s).
+ * Envoie une commande EXCLUSIVEMENT via la route serveur sécurisée /api/submit-order.
+ * Le client navigateur n'effectue AUCUN appel direct vers Apps Script.
+ * Le serveur Vercel injecte le jeton secret APPS_SCRIPT_SECRET de manière sécurisée.
  */
-async function executeSinglePush(
-  url: string,
-  payload: any,
-  timeoutMs: number = 25000
-): Promise<{ success: boolean; numero?: string; error?: string }> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8',
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timer);
-
-    if (!res.ok) {
-      return { success: false, error: `Erreur HTTP ${res.status}` };
-    }
-
-    const text = await res.text();
-    let data: any;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      return { success: false, error: `Réponse non-JSON du script: ${text.slice(0, 120)}` };
-    }
-
-    if (data && data.success === true && typeof data.numero === 'string' && data.numero.trim() !== '') {
-      return { success: true, numero: data.numero.trim() };
-    }
-
-    return {
-      success: false,
-      error: data?.error || 'Le script a répondu sans confirmer de numéro de commande officiel.',
-    };
-  } catch (err: any) {
-    clearTimeout(timer);
-    if (err.name === 'AbortError') {
-      return { success: false, error: 'Délai d\'attente dépassé (> 25 secondes sans réponse du script Google).' };
-    }
-    return { success: false, error: err.message || 'Erreur réseau de communication.' };
-  }
-}
-
-/**
- * Envoie une commande vers Google Sheets (onglet CommandesWeb de LP SYSTEME)
- * - Délai d'attente d'au moins 20 secondes par tentative (25s)
- * - 3 tentatives espacées de 3 secondes en cas d'échec ou d'absence de numéro officiel
- * - Ne renvoie JAMAIS de faux succès si le numéro n'a pas été attribué
- * - Inclut le champ stripeId pour rapprocher commande et paiement
- */
-export async function pushOrderToAppsScript(
-  orderData: OrderPayload,
-  customUrl?: string,
-  customSecret?: string
-): Promise<OrderPushResult> {
-  const url = customUrl || getAppsScriptUrl();
-  const secret = customSecret || getAppsScriptSecret();
-
-  if (!url) {
-    const err = 'URL Google Apps Script non configurée.';
-    await triggerTransmissionFailureAlert(orderData, err, orderData.stripeId);
-    return { success: false, error: err };
-  }
-
+export async function pushOrderToAppsScript(orderData: OrderPayload): Promise<OrderPushResult> {
   const payload: Record<string, any> = {
-    secret,
     nom: orderData.customerName,
     tel: orderData.customerPhone,
     email: orderData.customerEmail,
@@ -371,67 +229,35 @@ export async function pushOrderToAppsScript(
     payload.stripeId = orderData.stripeId;
   }
 
-  // 1. Tenter d'abord via le proxy backend serveur s'il est disponible (évite tout problème CORS navigateur)
   try {
-    const proxyRes = await fetch('/api/submit-order', {
+    const res = await fetch('/api/submit-order', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ orderPayload: payload }),
     });
 
-    if (proxyRes.ok) {
-      const proxyData = await proxyRes.json();
-      if (proxyData && proxyData.success === true && typeof proxyData.numero === 'string') {
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success === true && typeof data.numero === 'string' && data.numero.trim() !== '') {
         return {
           success: true,
-          numero: proxyData.numero,
+          numero: data.numero.trim(),
           stripeId: orderData.stripeId,
-          attempts: proxyData.attempts || 1,
+          attempts: data.attempts || 1,
         };
       }
+      const errMsg = data?.error || 'Le serveur n\'a pas validé de numéro de commande officiel.';
+      await triggerTransmissionFailureAlert(orderData, errMsg, orderData.stripeId);
+      return { success: false, error: errMsg, attempts: data?.attempts || 1 };
     }
-  } catch (proxyErr) {
-    console.warn('[AppsScript] Proxy serveur non sollicitable, exécution directe client:', proxyErr);
+
+    const errorText = await res.text();
+    const errMsg = `Erreur serveur HTTP ${res.status}: ${errorText.slice(0, 150)}`;
+    await triggerTransmissionFailureAlert(orderData, errMsg, orderData.stripeId);
+    return { success: false, error: errMsg, attempts: 1 };
+  } catch (err: any) {
+    const errMsg = err.message || 'Erreur réseau de communication avec le serveur.';
+    await triggerTransmissionFailureAlert(orderData, errMsg, orderData.stripeId);
+    return { success: false, error: errMsg, attempts: 1 };
   }
-
-  // 2. Boucle de transmission directe robuste : 3 tentatives espacées de 3 secondes
-  const MAX_ATTEMPTS = 3;
-  const TIMEOUT_MS = 25000; // 25 secondes (> 20s demandées)
-  const DELAY_MS = 3000;    // 3 secondes d'espacement
-
-  let lastError = 'Échec de transmission';
-
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    console.log(`[AppsScript] Transmission tentative ${attempt}/${MAX_ATTEMPTS}...`);
-    const res = await executeSinglePush(url, payload, TIMEOUT_MS);
-
-    if (res.success && res.numero) {
-      console.log(`[AppsScript] Succès : Commande enregistrée sous le numéro ${res.numero} (tentative ${attempt})`);
-      return {
-        success: true,
-        numero: res.numero,
-        attempts: attempt,
-        stripeId: orderData.stripeId,
-      };
-    }
-
-    lastError = res.error || 'Aucune réponse du script Google';
-    console.warn(`[AppsScript] Tentative ${attempt}/${MAX_ATTEMPTS} échouée : ${lastError}`);
-
-    if (attempt < MAX_ATTEMPTS) {
-      await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
-    }
-  }
-
-  // 3. Si les 3 tentatives échouent : déclenchement de l'alerte d'urgence
-  console.error(`[AppsScript] ÉCHEC DÉFINITIF après ${MAX_ATTEMPTS} tentatives.`);
-  await triggerTransmissionFailureAlert(orderData, lastError, orderData.stripeId);
-
-  return {
-    success: false,
-    error: lastError,
-    attempts: MAX_ATTEMPTS,
-    stripeId: orderData.stripeId,
-    rawPayload: payload,
-  };
 }

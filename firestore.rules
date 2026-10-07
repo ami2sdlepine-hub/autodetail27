@@ -8,16 +8,16 @@ service cloud.firestore {
         request.auth.token.email in ['ami2s.d.lepine@gmail.com', 'contact@autodetail27.fr'];
     }
 
-    // Products catalog: publicly readable, modifiable from admin
+    // Products catalog: publicly readable, write restricted to authenticated admin
     match /products/{productId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAdmin();
     }
 
-    // Global settings (shipping, pricing): publicly readable, modifiable from admin
+    // Global and display settings: publicly readable, write restricted to authenticated admin
     match /settings/{settingId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAdmin();
     }
 
     // Customer orders: customers can create orders, but ONLY admin can read/manage them (GDPR & privacy)
