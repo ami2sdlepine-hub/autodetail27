@@ -43,7 +43,7 @@ import {
   toggleProductVisibilityInCloud,
   saveSettingsToCloud,
 } from './services/firebaseService';
-import { Sparkles, Camera } from 'lucide-react';
+import { Sparkles, Camera, RefreshCw, AlertCircle, Mail } from 'lucide-react';
 import { fetchStockFromAppsScript } from './services/appsScriptSync';
 
 export default function App() {
@@ -214,6 +214,13 @@ export default function App() {
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState<boolean>(false);
   const [successOrderRef, setSuccessOrderRef] = useState<string>('');
   const [successOrderDetails, setSuccessOrderDetails] = useState<OrderDetails | null>(null);
+  const [verifyingStripe, setVerifyingStripe] = useState<boolean>(false);
+  const [transmissionFailureAlert, setTransmissionFailureAlert] = useState<{
+    stripeId?: string;
+    customerEmail?: string;
+    orderData?: any;
+    error?: string;
+  } | null>(null);
 
   // Section visibility states (configurable by admin)
   const [showBeforeAfter, setShowBeforeAfter] = useState<boolean>(() => {
@@ -332,7 +339,7 @@ export default function App() {
 
     return {
       id: 'pack-trilogie',
-      code: 'TRILOGIE',
+      code: 'PACK-TRILOGIE',
       name: trilogyConfig.bundleTitle || 'Trilogie Polissage',
       volume: '3 flacons inclus',
       refNumber: 'PACK',
@@ -506,8 +513,9 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const payment = params.get('payment');
-    const orderRef = params.get('order_ref');
-    if (payment === 'success' && orderRef) {
+    const sessionId = params.get('session_id') || params.get('sessionId') || '';
+
+    if (payment === 'success') {
       soundManager.playCashRegister();
       setCart({});
       try {
@@ -516,40 +524,125 @@ export default function App() {
         console.error(e);
       }
 
-      // Retrieve full order details from storage for instant rich display
-      let details: OrderDetails | null = null;
+      // Nettoyer l'URL immédiatement
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+      // Récupérer les données de la commande enregistrées localement
+      let storedOrder: any = null;
       try {
-        const saved =
-          localStorage.getItem('autodetail_pending_order_' + orderRef) ||
+        const raw =
+          localStorage.getItem('autodetail_pending_checkout_order') ||
           localStorage.getItem('autodetail_last_order');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          details = {
-            orderRef,
-            customerName: `${parsed.customer?.firstName || ''} ${parsed.customer?.lastName || ''}`.trim(),
-            customerEmail: parsed.customer?.email,
-            customerPhone: parsed.customer?.phone,
-            shippingAddress: parsed.customer?.address
-              ? `${parsed.customer.address}, ${parsed.customer.postalCode || ''} ${parsed.customer.city || ''}`
-              : '',
-            carrierName: parsed.carrier?.name,
-            deliveryMode: parsed.carrier?.name,
-            subtotal: parsed.subtotal || 0,
-            shippingCost: parsed.shippingCost || 0,
-            total: parsed.total || 0,
-            paymentMethod: parsed.paymentMethod || 'stripe_card',
-            items: parsed.items || [],
-          };
+        if (raw) {
+          storedOrder = JSON.parse(raw);
         }
       } catch (err) {
-        console.warn('Error reading order details:', err);
+        console.warn('Error reading stored order payload:', err);
       }
 
-      setSuccessOrderRef(orderRef);
-      setSuccessOrderDetails(details);
-      setIsSuccessModalOpen(true);
+      setVerifyingStripe(true);
 
-      window.history.replaceState({}, document.title, window.location.pathname);
+      // Appel sécurisé au serveur avec 3 tentatives espacées de 3s et timeout 25s
+      fetch('/api/confirm-stripe-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          orderPayload: storedOrder,
+        }),
+      })
+        .then(async (res) => {
+          setVerifyingStripe(false);
+          const data = await res.json();
+
+          // La seule référence affichée au client est le numero renvoyé par l'API (WEB-2026-xxx)
+          if (data && data.success === true && typeof data.numero === 'string' && data.numero.trim() !== '') {
+            const officialNumero = data.numero.trim();
+            setSuccessOrderRef(officialNumero);
+
+            const details: OrderDetails = {
+              orderRef: officialNumero,
+              customerName:
+                storedOrder?.customerName ||
+                `${storedOrder?.customer?.firstName || ''} ${storedOrder?.customer?.lastName || ''}`.trim() ||
+                'Client AUTODETAIL',
+              customerEmail: storedOrder?.customerEmail || storedOrder?.customer?.email,
+              customerPhone: storedOrder?.customerPhone || storedOrder?.customer?.phone,
+              shippingAddress:
+                storedOrder?.shippingAddress ||
+                (storedOrder?.customer?.address
+                  ? `${storedOrder.customer.address}, ${storedOrder.customer.postalCode || ''} ${storedOrder.customer.city || ''}`
+                  : ''),
+              carrierName: storedOrder?.carrier?.name || storedOrder?.deliveryMode,
+              deliveryMode: storedOrder?.carrier?.name || storedOrder?.deliveryMode,
+              subtotal: storedOrder?.subtotal || 0,
+              shippingCost: storedOrder?.shippingCost || 0,
+              total: storedOrder?.total || 0,
+              paymentMethod: 'stripe_card',
+              items: (storedOrder?.items || []).map((it: any) => ({
+                code: it.code || it.ref || '',
+                name: it.name || it.nom || '',
+                quantity: it.quantity || it.qty || 1,
+                price: it.price || it.pu || 0,
+              })),
+            };
+
+            setSuccessOrderDetails(details);
+            setIsSuccessModalOpen(true);
+            soundManager.playCashRegister();
+
+            try {
+              localStorage.removeItem('autodetail_pending_checkout_order');
+            } catch {}
+          } else {
+            // Si les 3 tentatives échouent : NE PAS afficher de page de succès.
+            // Afficher le message d'alerte honnête
+            const customerEmail =
+              storedOrder?.customerEmail ||
+              storedOrder?.customer?.email ||
+              data?.customerEmail ||
+              'votre adresse email';
+
+            const alertData = {
+              stripeId: sessionId || data?.stripeId || 'Paiement Stripe confirmé',
+              customerEmail,
+              orderData: storedOrder,
+              error: data?.error || 'Échec de transmission vers le système de gestion',
+            };
+
+            setTransmissionFailureAlert(alertData);
+
+            // Alerte automatique vers contact@autodetail27.fr
+            try {
+              fetch('/api/send-transmission-alert', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  type: 'STRIPE_PAID_ORDER_TRANSMISSION_FAILED',
+                  recipient: 'contact@autodetail27.fr',
+                  ...alertData,
+                  timestamp: new Date().toISOString(),
+                }),
+              }).catch(() => {});
+            } catch {}
+          }
+        })
+        .catch((err) => {
+          setVerifyingStripe(false);
+          const customerEmail =
+            storedOrder?.customerEmail ||
+            storedOrder?.customer?.email ||
+            'votre adresse email';
+
+          const alertData = {
+            stripeId: sessionId || 'Paiement Stripe confirmé',
+            customerEmail,
+            orderData: storedOrder,
+            error: err.message || 'Erreur réseau',
+          };
+
+          setTransmissionFailureAlert(alertData);
+        });
     } else if (payment === 'cancelled') {
       showToast('Paiement annulé. Vos articles sont toujours dans votre panier.');
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -1391,6 +1484,92 @@ export default function App() {
         orderRef={successOrderRef}
         orderDetails={successOrderDetails}
       />
+
+      {/* Stripe Verification Loading Overlay */}
+      {verifyingStripe && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="relative w-full max-w-md rounded-3xl bg-[#10141b] border border-[#232a35] p-8 text-[#eef1f4] shadow-2xl text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-[#3ee6d8]/10 border border-[#3ee6d8]/30 flex items-center justify-center mx-auto text-[#3ee6d8] animate-spin">
+              <RefreshCw className="w-8 h-8" />
+            </div>
+            <h3 className="font-plate text-xl text-[#eef1f4]">
+              Validation de votre commande...
+            </h3>
+            <p className="text-xs sm:text-sm text-[#8b949e] leading-relaxed">
+              Paiement confirmé par Stripe. Nous récupérons votre numéro officiel (WEB-2026-xxx) auprès du système de l'atelier...
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Transmission Failure Honest Alert Modal */}
+      {transmissionFailureAlert && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="relative w-full max-w-xl rounded-3xl bg-[#10141b] border border-amber-500/40 p-6 sm:p-8 text-[#eef1f4] shadow-2xl space-y-6">
+            <div className="flex items-center gap-3 pb-4 border-b border-[#232a35]">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-plate text-lg sm:text-xl text-[#eef1f4]">
+                  Transmission de votre commande
+                </h3>
+                <p className="text-xs text-amber-400 font-mono">
+                  Paiement enregistré • Transmission en attente
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs sm:text-sm text-[#eef1f4] space-y-3 leading-relaxed">
+              <p className="font-semibold text-amber-300">
+                Votre paiement est bien enregistré, mais la transmission de votre commande a échoué.
+              </p>
+              <p className="text-[#c9d1d9]">
+                Nous vous recontactons sous 24 h à <strong className="text-white underline">{transmissionFailureAlert.customerEmail}</strong>.
+              </p>
+              <div className="p-3 rounded-xl bg-[#0a0d12] border border-[#232a35] font-mono text-xs space-y-1">
+                <div>
+                  <span className="text-[#8b949e]">Référence de paiement : </span>
+                  <span className="text-[#3ee6d8] font-bold break-all">{transmissionFailureAlert.stripeId}</span>
+                </div>
+                <div>
+                  <span className="text-[#8b949e]">Contact : </span>
+                  <a href="mailto:contact@autodetail27.fr" className="text-[#3ee6d8] hover:underline">contact@autodetail27.fr</a>
+                </div>
+              </div>
+              <p className="text-[11px] text-[#8b949e]">
+                Une alerte contenant le détail complet de votre commande a été transmise à notre atelier afin qu'elle soit ressaisie manuellement.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <a
+                href={`mailto:contact@autodetail27.fr?subject=Alerte transmission commande payée (${encodeURIComponent(transmissionFailureAlert.stripeId || '')})&body=${encodeURIComponent(
+                  `Bonjour,\n\nMon paiement a bien été validé mais la transmission a échoué.\n\nRéférence de paiement : ${transmissionFailureAlert.stripeId}\nEmail client : ${transmissionFailureAlert.customerEmail}\n\nDétail de la commande :\n${JSON.stringify(transmissionFailureAlert.orderData, null, 2)}`
+                )}`}
+                className="flex-1 py-3 px-4 rounded-xl bg-[#232a35] hover:bg-[#2d3748] text-[#eef1f4] text-xs font-plate uppercase tracking-wider flex items-center justify-center gap-2 transition-colors"
+              >
+                <Mail className="w-4 h-4 text-[#3ee6d8]" />
+                Envoyer email à contact@autodetail27.fr
+              </a>
+              <button
+                onClick={() => setTransmissionFailureAlert(null)}
+                className="flex-1 py-3 px-4 rounded-xl bg-[#3ee6d8] hover:bg-[#3ee6d8]/90 text-[#0a0d12] text-xs font-plate font-black uppercase tracking-wider flex items-center justify-center transition-colors cursor-pointer"
+              >
+                Fermer et retourner au site
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Business Settings Modal */}
       <BusinessSettingsModal

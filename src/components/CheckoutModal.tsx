@@ -115,47 +115,53 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setLoading(true);
     setError(null);
 
-    const orderRef = `AD27-${Date.now().toString().slice(-6)}`;
-    setCompletedOrderRef(orderRef);
-    setCompletedOrderTotal(total);
-
-    const orderData = {
-      orderId: orderRef,
-      createdAt: new Date().toISOString(),
-      customer: {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
-        address: carrier !== 'pickup' ? address.trim() : null,
-        postalCode: carrier !== 'pickup' ? postalCode.trim() : null,
-        city: carrier !== 'pickup' ? city.trim() : null,
-        relayPointPreference: carrier === 'mondial_relay' ? relayPointPreference.trim() : null,
-        pickupDateSlot: carrier === 'pickup' ? pickupDateSlot.trim() : null,
-      },
-      items: cartEntries.map((it) => ({
-        id: it.product.id,
-        name: it.product.name,
-        price: it.product.price,
-        volume: it.product.volume,
-        quantity: it.quantity,
-      })),
-      carrier: {
-        id: activeOption.id,
-        name: activeOption.name,
-        delay: activeOption.delay,
-      },
-      parcelWeightKg: weightKg,
-      subtotal,
-      shippingCost: effectiveShipping,
-      total,
-      paymentMethod,
-      status: paymentMethod === 'onsite_pickup' ? 'confirmed_pickup_pending' : 'paid_card',
-    };
-
     // If Stripe chosen, attempt to create Checkout Session with locked amount
     if (paymentMethod === 'stripe_card') {
+      const stripeOrderPayload = {
+        customerName: `${firstName} ${lastName}`.trim(),
+        customerEmail: email.trim(),
+        customerPhone: phone.trim(),
+        deliveryMode: activeOption.name,
+        shippingAddress:
+          carrier === 'pickup'
+            ? "Retrait sur RDV à l'atelier (Heubécourt-Haricourt 27)"
+            : `${address}, ${postalCode} ${city}${relayPointPreference ? ' (Point Relais : ' + relayPointPreference + ')' : ''}`,
+        noteClient: carrier === 'pickup' ? (pickupDateSlot || '') : (relayPointPreference || ''),
+        subtotal,
+        shippingCost: effectiveShipping,
+        total,
+        paiement: 'en_ligne' as const,
+        items: cartEntries.map((e) => ({
+          code: e.product.code || e.product.id,
+          name: e.product.name,
+          quantity: e.quantity,
+          price: e.product.price,
+        })),
+        customer: {
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          address: carrier !== 'pickup' ? address.trim() : null,
+          postalCode: carrier !== 'pickup' ? postalCode.trim() : null,
+          city: carrier !== 'pickup' ? city.trim() : null,
+          relayPointPreference: carrier === 'mondial_relay' ? relayPointPreference.trim() : null,
+          pickupDateSlot: carrier === 'pickup' ? pickupDateSlot.trim() : null,
+        },
+        carrier: {
+          id: activeOption.id,
+          name: activeOption.name,
+          delay: activeOption.delay,
+        },
+      };
+
       try {
+        // Enregistrer la commande en mémoire locale pour la page de retour Stripe
+        try {
+          localStorage.setItem('autodetail_pending_checkout_order', JSON.stringify(stripeOrderPayload));
+          localStorage.setItem('autodetail_last_order', JSON.stringify(stripeOrderPayload));
+        } catch {}
+
         const res = await fetch('/api/create-checkout-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -168,11 +174,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               quantity: e.quantity,
               refNumber: e.product.refNumber,
             })),
-            orderRef,
             customerEmail: email,
             shippingCost: effectiveShipping,
             carrierName: activeOption.name,
             originUrl: window.location.origin,
+            orderPayload: stripeOrderPayload,
           }),
         });
 
@@ -182,39 +188,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
         const data = await res.json();
         if (data.url) {
-          try {
-            const docRef = doc(db, 'orders', orderRef);
-            await setDoc(docRef, { ...orderData, status: 'pending_stripe_redirect' });
-          } catch (err) {
-            console.warn('Order saved locally (Firestore offline notice):', err);
-          }
-
-          try {
-            localStorage.setItem('autodetail_pending_order_' + orderRef, JSON.stringify(orderData));
-            localStorage.setItem('autodetail_last_order', JSON.stringify(orderData));
-          } catch {}
-
-          pushOrderToAppsScript({
-            customerName: `${firstName} ${lastName}`.trim(),
-            customerEmail: email,
-            customerPhone: phone,
-            deliveryMode: activeOption.name,
-            shippingAddress: `${address}, ${postalCode} ${city}${relayPointPreference ? ' (Point Relais : ' + relayPointPreference + ')' : ''}`,
-            noteClient: relayPointPreference || '',
-            subtotal,
-            shippingCost: effectiveShipping,
-            total,
-            paiement: 'en_ligne',
-            items: cartEntries.map((e) => ({
-              code: e.product.code || e.product.id,
-              name: e.product.name,
-              quantity: e.quantity,
-              price: e.product.price,
-            })),
-          }).catch((e) => console.warn('Apps Script sync notice:', e));
-
-          soundManager.playCashRegister();
-          onOrderCompleted();
           window.location.href = data.url;
           return;
         }
@@ -228,7 +201,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         }
 
         throw new Error(data.error || 'Erreur lors de la création de la session Stripe');
-      } catch (err) {
+      } catch (err: any) {
         console.error('Stripe session creation error:', err);
         setError(
           'Le paiement en ligne par carte bancaire est temporairement indisponible. Aucune somme n\'a été prélevée. Veuillez sélectionner « Règlement sur place au retrait » ci-dessus ou nous contacter au 06 14 06 44 48.'
@@ -239,48 +212,96 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
 
     // Only if paymentMethod === 'onsite_pickup' (Retrait Atelier)
-    try {
-      const docRef = doc(db, 'orders', orderRef);
-      await setDoc(docRef, orderData);
-    } catch (err) {
-      console.warn('Order saved locally (Firestore offline notice):', err);
-    }
-
-    try {
-      localStorage.setItem('autodetail_last_order', JSON.stringify(orderData));
-    } catch {}
-
-    pushOrderToAppsScript({
+    const onsiteOrderPayload = {
       customerName: `${firstName} ${lastName}`.trim(),
-      customerEmail: email,
-      customerPhone: phone,
+      customerEmail: email.trim(),
+      customerPhone: phone.trim(),
       deliveryMode: 'Retrait Atelier sur RDV (27)',
       shippingAddress: 'Retrait sur RDV à l\'atelier (Heubécourt-Haricourt 27)',
-      noteClient: pickupDateSlot || '',
+      noteClient: pickupDateSlot ? `Créneau souhaité : ${pickupDateSlot}` : '',
       subtotal,
       shippingCost: 0,
       total,
-      paiement: 'sur_place',
+      paiement: 'sur_place' as const,
       items: cartEntries.map((e) => ({
         code: e.product.code || e.product.id,
         name: e.product.name,
         quantity: e.quantity,
         price: e.product.price,
       })),
-    })
-      .then((res) => {
-        if (res && res.numero) {
-          setCompletedOrderRef(res.numero);
-        }
-      })
-      .catch((err) => {
-        console.warn('Apps Script sync notice:', err);
-      });
+    };
 
-    soundManager.playCashRegister();
-    setLoading(false);
-    setStep('success');
-    onOrderCompleted();
+    try {
+      // Transmission vers Google Apps Script avec 3 tentatives espacées de 3s et timeout 25s
+      const pushRes = await pushOrderToAppsScript(onsiteOrderPayload);
+
+      // La seule référence affichée au client est le numero renvoyé par l'API (WEB-2026-xxx)
+      if (pushRes && pushRes.success && pushRes.numero) {
+        const officialNumero = pushRes.numero;
+        setCompletedOrderRef(officialNumero);
+        setCompletedOrderTotal(total);
+
+        const orderData = {
+          orderId: officialNumero,
+          createdAt: new Date().toISOString(),
+          customer: {
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            email: email.trim(),
+            phone: phone.trim(),
+            address: null,
+            postalCode: null,
+            city: null,
+            pickupDateSlot: pickupDateSlot.trim() || null,
+          },
+          items: cartEntries.map((it) => ({
+            id: it.product.id,
+            name: it.product.name,
+            price: it.product.price,
+            volume: it.product.volume,
+            quantity: it.quantity,
+          })),
+          carrier: {
+            id: activeOption.id,
+            name: activeOption.name,
+            delay: activeOption.delay,
+          },
+          parcelWeightKg: weightKg,
+          subtotal,
+          shippingCost: 0,
+          total,
+          paymentMethod: 'onsite_pickup',
+          status: 'confirmed_pickup_pending',
+        };
+
+        try {
+          const docRef = doc(db, 'orders', officialNumero);
+          await setDoc(docRef, orderData);
+        } catch (err) {
+          console.warn('Order saved locally (Firestore offline notice):', err);
+        }
+
+        try {
+          localStorage.setItem('autodetail_last_order', JSON.stringify(orderData));
+        } catch {}
+
+        soundManager.playCashRegister();
+        setLoading(false);
+        setStep('success');
+        onOrderCompleted();
+      } else {
+        // En cas d'échec des 3 tentatives : ne JAMAIS afficher de page de succès avec faux numéro
+        setLoading(false);
+        setError(
+          'La transmission de votre commande a échoué malgré 3 tentatives automatiques. Votre réservation n\'a pas pu être enregistrée dans notre système. Nous vous invitons à contacter directement Pauline au 06 14 06 44 48 ou par email à contact@autodetail27.fr pour convenir de votre passage à l\'atelier. Une alerte a été transmise.'
+        );
+      }
+    } catch (err: any) {
+      setLoading(false);
+      setError(
+        'Erreur réseau lors de la transmission. Veuillez contacter l\'atelier au 06 14 06 44 48 ou réessayer.'
+      );
+    }
   };
 
   return (

@@ -206,10 +206,7 @@ export async function fetchStockFromAppsScript(customUrl?: string): Promise<Stoc
   }
 }
 
-/**
- * Envoie une commande validée dans Google Sheets (onglet CommandesWeb de LP SYSTEME)
- */
-export async function pushOrderToAppsScript(orderData: {
+export interface OrderPayload {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
@@ -220,18 +217,137 @@ export async function pushOrderToAppsScript(orderData: {
   shippingCost: number;
   total: number;
   paiement?: 'en_ligne' | 'sur_place';
+  stripeId?: string;
   items: Array<{
     code: string;
     name: string;
     quantity: number;
     price: number;
   }>;
-}): Promise<{ success: boolean; numero?: string }> {
-  const url = getAppsScriptUrl();
-  const secret = getAppsScriptSecret();
-  if (!url) return { success: false };
+}
 
-  const payload = {
+export interface OrderPushResult {
+  success: boolean;
+  numero?: string;
+  error?: string;
+  attempts?: number;
+  stripeId?: string;
+  rawPayload?: any;
+}
+
+/**
+ * Déclenche une alerte par email et sur le serveur contenant le JSON complet de la commande
+ * en cas d'échec définitif des 3 tentatives de transmission vers Google Apps Script.
+ */
+export async function triggerTransmissionFailureAlert(
+  orderData: OrderPayload,
+  errorMessage: string,
+  stripeId?: string
+): Promise<void> {
+  const alertData = {
+    type: 'TRANSMISSION_FAILED_AFTER_RETRIES',
+    timestamp: new Date().toISOString(),
+    recipient: 'contact@autodetail27.fr',
+    error: errorMessage,
+    stripeId: stripeId || orderData.stripeId || null,
+    order: orderData,
+  };
+
+  console.error('[CRITIQUE - ALERTE TRANSMISSION ÉCHOUÉE]', alertData);
+
+  // 1. Sauvegarde locale de sécurité
+  try {
+    const existing = JSON.parse(localStorage.getItem('autodetail_failed_orders') || '[]');
+    existing.push(alertData);
+    localStorage.setItem('autodetail_failed_orders', JSON.stringify(existing.slice(-20)));
+  } catch {}
+
+  // 2. Notification serveur pour journalisation et transmission
+  try {
+    await fetch('/api/send-transmission-alert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(alertData),
+    });
+  } catch (err) {
+    console.warn('[ALERTE] Échec de transmission au serveur d\'alerte:', err);
+  }
+}
+
+/**
+ * Effectue un appel unique vers l'URL Google Apps Script avec un délai d'attente d'au moins 20s (ici 25s).
+ */
+async function executeSinglePush(
+  url: string,
+  payload: any,
+  timeoutMs: number = 25000
+): Promise<{ success: boolean; numero?: string; error?: string }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timer);
+
+    if (!res.ok) {
+      return { success: false, error: `Erreur HTTP ${res.status}` };
+    }
+
+    const text = await res.text();
+    let data: any;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return { success: false, error: `Réponse non-JSON du script: ${text.slice(0, 120)}` };
+    }
+
+    if (data && data.success === true && typeof data.numero === 'string' && data.numero.trim() !== '') {
+      return { success: true, numero: data.numero.trim() };
+    }
+
+    return {
+      success: false,
+      error: data?.error || 'Le script a répondu sans confirmer de numéro de commande officiel.',
+    };
+  } catch (err: any) {
+    clearTimeout(timer);
+    if (err.name === 'AbortError') {
+      return { success: false, error: 'Délai d\'attente dépassé (> 25 secondes sans réponse du script Google).' };
+    }
+    return { success: false, error: err.message || 'Erreur réseau de communication.' };
+  }
+}
+
+/**
+ * Envoie une commande vers Google Sheets (onglet CommandesWeb de LP SYSTEME)
+ * - Délai d'attente d'au moins 20 secondes par tentative (25s)
+ * - 3 tentatives espacées de 3 secondes en cas d'échec ou d'absence de numéro officiel
+ * - Ne renvoie JAMAIS de faux succès si le numéro n'a pas été attribué
+ * - Inclut le champ stripeId pour rapprocher commande et paiement
+ */
+export async function pushOrderToAppsScript(
+  orderData: OrderPayload,
+  customUrl?: string,
+  customSecret?: string
+): Promise<OrderPushResult> {
+  const url = customUrl || getAppsScriptUrl();
+  const secret = customSecret || getAppsScriptSecret();
+
+  if (!url) {
+    const err = 'URL Google Apps Script non configurée.';
+    await triggerTransmissionFailureAlert(orderData, err, orderData.stripeId);
+    return { success: false, error: err };
+  }
+
+  const payload: Record<string, any> = {
     secret,
     nom: orderData.customerName,
     tel: orderData.customerPhone,
@@ -251,36 +367,71 @@ export async function pushOrderToAppsScript(orderData: {
     })),
   };
 
+  if (orderData.stripeId) {
+    payload.stripeId = orderData.stripeId;
+  }
+
+  // 1. Tenter d'abord via le proxy backend serveur s'il est disponible (évite tout problème CORS navigateur)
   try {
-    // We send payload as text/plain to avoid CORS preflight options blocking
-    const res = await fetch(url, {
+    const proxyRes = await fetch('/api/submit-order', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8',
-      },
-      body: JSON.stringify(payload),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderPayload: payload }),
     });
 
-    if (res.ok) {
-      const result = await res.json();
-      return result;
+    if (proxyRes.ok) {
+      const proxyData = await proxyRes.json();
+      if (proxyData && proxyData.success === true && typeof proxyData.numero === 'string') {
+        return {
+          success: true,
+          numero: proxyData.numero,
+          stripeId: orderData.stripeId,
+          attempts: proxyData.attempts || 1,
+        };
+      }
     }
-    return { success: true };
-  } catch (err) {
-    // If browser CORS triggers an opaque result, fallback to no-cors beacon
-    try {
-      await fetch(url, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8',
-        },
-        body: JSON.stringify(payload),
-      });
-      return { success: true };
-    } catch {
-      console.warn('Apps Script order push failed:', err);
-      return { success: false };
+  } catch (proxyErr) {
+    console.warn('[AppsScript] Proxy serveur non sollicitable, exécution directe client:', proxyErr);
+  }
+
+  // 2. Boucle de transmission directe robuste : 3 tentatives espacées de 3 secondes
+  const MAX_ATTEMPTS = 3;
+  const TIMEOUT_MS = 25000; // 25 secondes (> 20s demandées)
+  const DELAY_MS = 3000;    // 3 secondes d'espacement
+
+  let lastError = 'Échec de transmission';
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    console.log(`[AppsScript] Transmission tentative ${attempt}/${MAX_ATTEMPTS}...`);
+    const res = await executeSinglePush(url, payload, TIMEOUT_MS);
+
+    if (res.success && res.numero) {
+      console.log(`[AppsScript] Succès : Commande enregistrée sous le numéro ${res.numero} (tentative ${attempt})`);
+      return {
+        success: true,
+        numero: res.numero,
+        attempts: attempt,
+        stripeId: orderData.stripeId,
+      };
+    }
+
+    lastError = res.error || 'Aucune réponse du script Google';
+    console.warn(`[AppsScript] Tentative ${attempt}/${MAX_ATTEMPTS} échouée : ${lastError}`);
+
+    if (attempt < MAX_ATTEMPTS) {
+      await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
     }
   }
+
+  // 3. Si les 3 tentatives échouent : déclenchement de l'alerte d'urgence
+  console.error(`[AppsScript] ÉCHEC DÉFINITIF après ${MAX_ATTEMPTS} tentatives.`);
+  await triggerTransmissionFailureAlert(orderData, lastError, orderData.stripeId);
+
+  return {
+    success: false,
+    error: lastError,
+    attempts: MAX_ATTEMPTS,
+    stripeId: orderData.stripeId,
+    rawPayload: payload,
+  };
 }
