@@ -1,11 +1,21 @@
 import Stripe from 'stripe';
 
-export const APPS_SCRIPT_URL =
-  process.env.APPS_SCRIPT_URL ||
-  'https://script.google.com/macros/s/AKfycbzWuWbZNa7ylcJz7jrqMjnRS2PfLPzZO-1ptAoyb3KBR4incAnPCkqsFt_gquSFkOnJVQ/exec';
+// Nettoyage rigoureux de l'URL Apps Script : sans guillemets, sans espaces, URL /exec exacte
+function sanitizeAppsScriptUrl(raw?: string): string {
+  const fallback =
+    'https://script.google.com/macros/s/AKfycbzWuWbZNa7ylcJz7jrqMjnRS2PfLPzZO-1ptAoyb3KBR4incAnPCkqsFt_gquSFkOnJVQ/exec';
+  const val = (raw || '').trim().replace(/^["']|["']$/g, '').trim();
+  return val || fallback;
+}
 
-export const APPS_SCRIPT_SECRET =
-  process.env.APPS_SCRIPT_SECRET || 'le-herisson-lave-les-jantes-en-77-secondes!';
+function sanitizeAppsScriptSecret(raw?: string): string {
+  const fallback = 'le-herisson-lave-les-jantes-en-77-secondes!';
+  const val = (raw || '').trim().replace(/^["']|["']$/g, '').trim();
+  return val || fallback;
+}
+
+export const APPS_SCRIPT_URL = sanitizeAppsScriptUrl(process.env.APPS_SCRIPT_URL);
+export const APPS_SCRIPT_SECRET = sanitizeAppsScriptSecret(process.env.APPS_SCRIPT_SECRET);
 
 export const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
 export const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
@@ -91,20 +101,24 @@ export async function executeServerAppsScriptPush(orderPayload: any): Promise<{
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload),
+        redirect: 'follow',
         signal: controller.signal,
       });
 
       clearTimeout(timer);
 
+      const text = await res.text();
+
       if (!res.ok) {
-        lastError = `Erreur HTTP ${res.status}`;
+        lastError = `Erreur HTTP ${res.status}: ${text.slice(0, 300)}`;
+        console.error(`[AppsScript Serverless] HTTP ${res.status} reçu - Aperçu réponse (300 car) :`, text.slice(0, 300));
       } else {
-        const text = await res.text();
         let data: any;
         try {
           data = JSON.parse(text);
         } catch {
-          lastError = `Réponse non-JSON: ${text.slice(0, 100)}`;
+          lastError = `Réponse non-JSON: ${text.slice(0, 300)}`;
+          console.warn(`[AppsScript Serverless] Réponse non-JSON reçue :`, text.slice(0, 300));
         }
 
         if (data && data.success === true && typeof data.numero === 'string' && data.numero.trim() !== '') {
@@ -113,7 +127,7 @@ export async function executeServerAppsScriptPush(orderPayload: any): Promise<{
           return { success: true, numero, attempts: attempt };
         }
 
-        lastError = data?.error || 'Le script a répondu sans numéro officiel';
+        lastError = data?.error || `Le script a répondu sans numéro officiel (réponse: ${text.slice(0, 300)})`;
       }
     } catch (err: any) {
       clearTimeout(timer);

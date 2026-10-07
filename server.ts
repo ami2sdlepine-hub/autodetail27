@@ -12,11 +12,22 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = 3000;
 
-const APPS_SCRIPT_URL =
-  process.env.APPS_SCRIPT_URL ||
-  'https://script.google.com/macros/s/AKfycbzWuWbZNa7ylcJz7jrqMjnRS2PfLPzZO-1ptAoyb3KBR4incAnPCkqsFt_gquSFkOnJVQ/exec';
-const APPS_SCRIPT_SECRET =
-  process.env.APPS_SCRIPT_SECRET || 'le-herisson-lave-les-jantes-en-77-secondes!';
+// Nettoyage rigoureux de l'URL Apps Script : sans guillemets, sans espaces, URL /exec exacte
+function sanitizeAppsScriptUrl(raw?: string): string {
+  const fallback =
+    'https://script.google.com/macros/s/AKfycbzWuWbZNa7ylcJz7jrqMjnRS2PfLPzZO-1ptAoyb3KBR4incAnPCkqsFt_gquSFkOnJVQ/exec';
+  const val = (raw || '').trim().replace(/^["']|["']$/g, '').trim();
+  return val || fallback;
+}
+
+function sanitizeAppsScriptSecret(raw?: string): string {
+  const fallback = 'le-herisson-lave-les-jantes-en-77-secondes!';
+  const val = (raw || '').trim().replace(/^["']|["']$/g, '').trim();
+  return val || fallback;
+}
+
+const APPS_SCRIPT_URL = sanitizeAppsScriptUrl(process.env.APPS_SCRIPT_URL);
+const APPS_SCRIPT_SECRET = sanitizeAppsScriptSecret(process.env.APPS_SCRIPT_SECRET);
 
 // Memory caches for orders state (persists across requests during server lifecycle)
 const pendingOrders = new Map<string, any>();
@@ -75,20 +86,24 @@ async function executeServerAppsScriptPush(orderPayload: any): Promise<{ success
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload),
+        redirect: 'follow',
         signal: controller.signal,
       });
 
       clearTimeout(timer);
 
+      const text = await res.text();
+
       if (!res.ok) {
-        lastError = `Erreur HTTP ${res.status}`;
+        lastError = `Erreur HTTP ${res.status}: ${text.slice(0, 300)}`;
+        console.error(`[Server AppsScript] HTTP ${res.status} reçu - Aperçu réponse (300 car) :`, text.slice(0, 300));
       } else {
-        const text = await res.text();
         let data: any;
         try {
           data = JSON.parse(text);
         } catch {
-          lastError = `Réponse non-JSON: ${text.slice(0, 100)}`;
+          lastError = `Réponse non-JSON: ${text.slice(0, 300)}`;
+          console.warn(`[Server AppsScript] Réponse non-JSON reçue :`, text.slice(0, 300));
         }
 
         if (data && data.success === true && typeof data.numero === 'string' && data.numero.trim() !== '') {
@@ -97,7 +112,7 @@ async function executeServerAppsScriptPush(orderPayload: any): Promise<{ success
           return { success: true, numero, attempts: attempt };
         }
 
-        lastError = data?.error || 'Le script a répondu sans numéro officiel';
+        lastError = data?.error || `Le script a répondu sans numéro officiel (réponse: ${text.slice(0, 300)})`;
       }
     } catch (err: any) {
       clearTimeout(timer);
