@@ -60,6 +60,14 @@ export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({
     orderDetails?.deliveryMode?.toLowerCase().includes('retrait') ||
     orderDetails?.carrierName?.toLowerCase().includes('retrait');
 
+  const rawPayment = (orderDetails?.paymentMethod || '').toLowerCase();
+  const isOnsite =
+    rawPayment === 'onsite_pickup' ||
+    rawPayment === 'sur_place' ||
+    rawPayment.includes('onsite') ||
+    rawPayment.includes('sur_place');
+  const isPaidByCard = !isOnsite;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/90 backdrop-blur-md animate-in fade-in"
@@ -78,17 +86,21 @@ export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({
 
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#151a22] border border-[#232a35] text-[11px] font-mono text-[#3ee6d8] uppercase tracking-wider mb-2">
             <ShieldCheck className="w-3.5 h-3.5" />
-            {isPickup || orderDetails?.paymentMethod === 'onsite_pickup'
-              ? 'Réservation confirmée (Règlement sur place)'
-              : 'Paiement validé par Stripe'}
+            {isPickup
+              ? isPaidByCard
+                ? 'COMMANDE PAYÉE ET RÉSERVÉE'
+                : 'RÉSERVATION CONFIRMÉE (RÈGLEMENT SUR PLACE)'
+              : 'Paiement validé par carte bancaire'}
           </div>
 
           <h2 className="text-2xl sm:text-3xl font-plate text-[#eef1f4] tracking-tight">
             Merci pour votre commande !
           </h2>
           <p className="text-xs sm:text-sm text-[#8b949e] mt-1 max-w-md mx-auto">
-            {isPickup || orderDetails?.paymentMethod === 'onsite_pickup'
-              ? 'Votre commande a bien été réservée. Le règlement s\'effectuera sur place lors du retrait à l\'atelier.'
+            {isPickup
+              ? isPaidByCard
+                ? 'Paiement validé par carte bancaire. Vos flacons sont préparés et vous attendent à notre atelier.'
+                : "Votre commande a bien été réservée. Le règlement s'effectuera sur place lors du retrait à l'atelier."
               : 'Votre règlement a été confirmé avec succès. Votre colis est pris en charge par notre atelier.'}
           </p>
 
@@ -193,12 +205,43 @@ export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({
                     {orderDetails.shippingCost === 0 ? 'Offerts (0,00 €)' : `${orderDetails.shippingCost.toFixed(2).replace('.', ',')} €`}
                   </span>
                 </div>
-                <div className="flex justify-between text-[#eef1f4] font-bold text-base pt-2 border-t border-[#232a35]">
-                  <span>{isPickup || orderDetails.paymentMethod === 'onsite_pickup' ? 'À régler sur place au retrait :' : 'Total payé TTC :'}</span>
-                  <span className="font-mono text-[#3ee6d8]">
-                    {orderDetails.total.toFixed(2).replace('.', ',')} €
+                <div className="flex justify-between text-[#8b949e] pt-1 border-t border-[#232a35]/40">
+                  <span>Mode de paiement</span>
+                  <span className={`font-medium ${isPaidByCard ? 'text-emerald-400' : 'text-[#3ee6d8]'}`}>
+                    {isPaidByCard ? 'Paiement validé par carte bancaire' : 'Règlement sur place'}
                   </span>
                 </div>
+
+                {isPickup ? (
+                  isPaidByCard ? (
+                    <>
+                      <div className="flex justify-between text-[#8b949e]">
+                        <span>Montant réglé en ligne</span>
+                        <span className="font-mono text-[#eef1f4] font-semibold">
+                          {orderDetails.total.toFixed(2).replace('.', ',')} €
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-[#eef1f4] font-bold text-base pt-2 border-t border-[#232a35]">
+                        <span className="text-emerald-400">À RÉGLER SUR PLACE :</span>
+                        <span className="font-mono text-emerald-400">0,00 €</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex justify-between text-[#eef1f4] font-bold text-base pt-2 border-t border-[#232a35]">
+                      <span>À RÉGLER SUR PLACE :</span>
+                      <span className="font-mono text-[#3ee6d8]">
+                        {orderDetails.total.toFixed(2).replace('.', ',')} €
+                      </span>
+                    </div>
+                  )
+                ) : (
+                  <div className="flex justify-between text-[#eef1f4] font-bold text-base pt-2 border-t border-[#232a35]">
+                    <span>Total payé TTC :</span>
+                    <span className="font-mono text-[#3ee6d8]">
+                      {orderDetails.total.toFixed(2).replace('.', ',')} €
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           )}

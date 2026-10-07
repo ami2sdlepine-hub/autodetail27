@@ -537,6 +537,7 @@ export default function App() {
             subtotal: parsed.subtotal || 0,
             shippingCost: parsed.shippingCost || 0,
             total: parsed.total || 0,
+            paymentMethod: parsed.paymentMethod || 'stripe_card',
             items: parsed.items || [],
           };
         }
