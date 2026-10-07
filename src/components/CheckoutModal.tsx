@@ -194,7 +194,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
         if (data.needsConfig) {
           setError(
-            'Le paiement par Carte Bancaire en ligne est en cours d\'activation. Aucune somme n\'a été prélevée. Pour finaliser votre commande dès maintenant, veuillez sélectionner « Règlement sur place au retrait » ci-dessus ou contacter Pauline au 06 14 06 44 48.'
+            'Le paiement par Carte Bancaire en ligne est en cours d\'activation. Aucune somme n\'a été prélevée. Pour finaliser votre commande dès maintenant, veuillez sélectionner « Règlement sur place au retrait » ci-dessus ou envoyer un SMS au 06 73 09 60 24 (en précisant vos articles).'
           );
           setLoading(false);
           return;
@@ -204,7 +204,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       } catch (err: any) {
         console.error('Stripe session creation error:', err);
         setError(
-          'Le paiement en ligne par carte bancaire est temporairement indisponible. Aucune somme n\'a été prélevée. Veuillez sélectionner « Règlement sur place au retrait » ci-dessus ou nous contacter au 06 14 06 44 48.'
+          'Le paiement en ligne par carte bancaire est temporairement indisponible. Aucune somme n\'a été prélevée. Veuillez sélectionner « Règlement sur place au retrait » ci-dessus ou nous contacter par SMS au 06 73 09 60 24 (en précisant votre demande).'
         );
         setLoading(false);
         return;
@@ -293,13 +293,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         // En cas d'échec des 3 tentatives : ne JAMAIS afficher de page de succès avec faux numéro
         setLoading(false);
         setError(
-          'La transmission de votre commande a échoué malgré 3 tentatives automatiques. Votre réservation n\'a pas pu être enregistrée dans notre système. Nous vous invitons à contacter directement Pauline au 06 14 06 44 48 ou par email à contact@autodetail27.fr pour convenir de votre passage à l\'atelier. Une alerte a été transmise.'
+          'La transmission de votre commande a échoué malgré 3 tentatives automatiques. Votre réservation n\'a pas pu être enregistrée dans notre système. Nous vous invitons à envoyer un SMS au 06 73 09 60 24 (en précisant votre commande) ou par email à contact@autodetail27.fr pour convenir de votre passage à l\'atelier. Une alerte a été transmise.'
         );
       }
     } catch (err: any) {
       setLoading(false);
       setError(
-        'Erreur réseau lors de la transmission. Veuillez contacter l\'atelier au 06 14 06 44 48 ou réessayer.'
+        'Erreur réseau lors de la transmission. Veuillez nous contacter par SMS au 06 73 09 60 24 (avec votre numéro de commande) ou réessayer.'
       );
     }
   };

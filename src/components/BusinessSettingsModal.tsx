@@ -340,13 +340,13 @@ export const BusinessSettingsModal: React.FC<BusinessSettingsModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-mono text-[#8b949e] mb-1">
-                  Téléphone de contact :
+                  Téléphone de contact (SMS) :
                 </label>
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="06 XX XX XX XX"
+                  placeholder="06 73 09 60 24"
                   className="w-full bg-[#151a22] border border-[#232a35] focus:border-[#3ee6d8] rounded-xl px-3.5 py-2.5 text-xs text-[#eef1f4] outline-none font-mono"
                 />
               </div>

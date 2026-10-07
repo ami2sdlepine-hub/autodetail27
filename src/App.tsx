@@ -186,7 +186,7 @@ export default function App() {
             ownerName: 'Pauline Pourrier',
             brandName: 'AUTODETAIL',
             address: '8 Rue Saint Gilles, 27630 Heubécourt-Haricourt',
-            phone: '06 14 06 44 48',
+            phone: '06 73 09 60 24',
             email: 'contact@autodetail27.fr',
           };
     } catch {
@@ -196,7 +196,7 @@ export default function App() {
         ownerName: 'Pauline Pourrier',
         brandName: 'AUTODETAIL',
         address: '8 Rue Saint Gilles, 27630 Heubécourt-Haricourt',
-        phone: '06 14 06 44 48',
+        phone: '06 73 09 60 24',
         email: 'contact@autodetail27.fr',
       };
     }

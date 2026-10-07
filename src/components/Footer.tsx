@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Mail, Phone, Lock, Unlock, ShieldCheck, Clock } from 'lucide-react';
+import { MapPin, Mail, Phone, MessageSquare, Lock, Unlock, ShieldCheck, Clock } from 'lucide-react';
 import { BusinessSettings } from './BusinessSettingsModal';
 
 export type LegalModalType = 'mentions' | 'cgv' | 'confidentialite' | 'livraison' | null;
@@ -53,8 +53,14 @@ export const Footer: React.FC<FooterProps> = ({
             </div>
             {phoneText && (
               <div className="flex items-center gap-2">
-                <Phone className="w-3.5 h-3.5 text-[#3ee6d8] flex-shrink-0" />
-                <span>{phoneText}</span>
+                <MessageSquare className="w-3.5 h-3.5 text-[#3ee6d8] flex-shrink-0" />
+                <a
+                  href={`sms:${phoneText.replace(/\s+/g, '')}`}
+                  className="hover:text-[#3ee6d8] transition-colors"
+                  title="SMS uniquement"
+                >
+                  {phoneText} (SMS uniquement)
+                </a>
               </div>
             )}
             <div className="flex items-center gap-2">

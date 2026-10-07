@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, Package, Truck, MapPin, Mail, Phone, ArrowLeft, ShieldCheck, Copy, Check } from 'lucide-react';
+import { CheckCircle2, Package, Truck, MapPin, Mail, MessageSquare, ArrowLeft, ShieldCheck, Copy, Check } from 'lucide-react';
 import { soundManager } from '../utils/soundEffects';
 
 export interface OrderItem {
@@ -247,17 +247,21 @@ export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({
           )}
 
           {/* Need help / contact banner */}
-          <div className="p-4 rounded-2xl bg-[#151a22]/60 border border-[#232a35] flex items-center justify-between gap-4 text-xs text-[#8b949e]">
+          <div className="p-4 rounded-2xl bg-[#151a22]/60 border border-[#232a35] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[#8b949e]">
             <div>
               <span className="text-[#eef1f4] font-medium block">Une question sur votre commande ?</span>
-              <span>Atelier AUTODETAIL • contact@autodetail27.fr</span>
+              <span>Contactez-nous par SMS en précisant votre numéro de commande</span>
             </div>
             <a
-              href="tel:0614064448"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#232a35] hover:bg-[#3ee6d8] hover:text-[#0a0d12] text-[#eef1f4] font-mono transition-colors whitespace-nowrap"
+              href={`sms:0673096024?body=${encodeURIComponent(
+                orderDetails?.orderRef
+                  ? `Bonjour, concernant ma commande ${orderDetails.orderRef} : `
+                  : 'Bonjour, concernant ma commande : '
+              )}`}
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#232a35] hover:bg-[#3ee6d8] hover:text-[#0a0d12] text-[#eef1f4] font-mono transition-colors whitespace-nowrap self-start sm:self-auto"
             >
-              <Phone className="w-3.5 h-3.5" />
-              06 14 06 44 48
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>06 73 09 60 24 (SMS uniquement)</span>
             </a>
           </div>
         </div>
