@@ -1,6 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import Stripe from 'stripe';
-import { stripeSecretKey } from './_shared.js';
+import { stripe, isStripeConfigured } from './_shared.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS configuration
@@ -20,16 +19,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  if (!stripeSecretKey) {
+  if (!isStripeConfigured || !stripe) {
     return res.status(200).json({
       needsConfig: true,
       message: 'STRIPE_SECRET_KEY non configuré dans les variables d\'environnement Vercel.',
     });
   }
-
-  const stripe = new Stripe(stripeSecretKey, {
-    apiVersion: '2023-10-16' as any,
-  });
 
   try {
     const { items, customerEmail, shippingCost, carrierName, originUrl, orderPayload } = req.body || {};

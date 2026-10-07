@@ -10,7 +10,17 @@ export const APPS_SCRIPT_SECRET =
 export const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
 export const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
 
-export const stripe = stripeSecretKey
+export const isStripeConfigured = Boolean(
+  stripeSecretKey && (stripeSecretKey.startsWith('sk_') || stripeSecretKey.startsWith('rk_'))
+);
+
+export const stripeMode = stripeSecretKey.includes('_live_')
+  ? 'live'
+  : stripeSecretKey.includes('_test_')
+  ? 'test'
+  : 'none';
+
+export const stripe = isStripeConfigured
   ? new Stripe(stripeSecretKey, {
       apiVersion: '2023-10-16' as any,
     })

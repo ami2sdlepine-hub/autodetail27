@@ -192,7 +192,16 @@ app.use(express.json());
 
 // Initialize Stripe if key is present in environment variables
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
-const stripe = stripeSecretKey
+const isStripeConfigured = Boolean(
+  stripeSecretKey && (stripeSecretKey.startsWith('sk_') || stripeSecretKey.startsWith('rk_'))
+);
+const stripeMode = stripeSecretKey.includes('_live_')
+  ? 'live'
+  : stripeSecretKey.includes('_test_')
+  ? 'test'
+  : 'none';
+
+const stripe = isStripeConfigured
   ? new Stripe(stripeSecretKey, {
       apiVersion: '2023-10-16' as any,
     })
@@ -201,8 +210,8 @@ const stripe = stripeSecretKey
 // API endpoint to get Stripe configuration status (safe, no secret exposed)
 app.get('/api/stripe-status', (_req, res) => {
   res.json({
-    configured: Boolean(stripeSecretKey),
-    mode: stripeSecretKey.includes('_live_') ? 'live' : stripeSecretKey.includes('_test_') ? 'test' : 'none',
+    configured: isStripeConfigured,
+    mode: stripeMode,
   });
 });
 

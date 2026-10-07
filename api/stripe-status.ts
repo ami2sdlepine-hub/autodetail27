@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { stripeSecretKey } from './_shared.js';
+import { isStripeConfigured, stripeMode } from './_shared.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -15,7 +15,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   return res.status(200).json({
-    configured: Boolean(stripeSecretKey && stripeSecretKey.startsWith('sk_')),
-    mode: stripeSecretKey.startsWith('sk_live_') ? 'live' : stripeSecretKey.startsWith('sk_test_') ? 'test' : 'none',
+    configured: isStripeConfigured,
+    mode: stripeMode,
   });
 }
