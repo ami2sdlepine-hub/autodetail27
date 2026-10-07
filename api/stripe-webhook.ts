@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
-import { stripe, stripeWebhookSecret, executeServerAppsScriptPush } from './_shared';
+import { stripe, stripeWebhookSecret, executeServerAppsScriptPush } from './_shared.js';
 
 // Désactiver le body parser automatique de Vercel pour lire le buffer brut requis par Stripe signature verification
 export const config = {

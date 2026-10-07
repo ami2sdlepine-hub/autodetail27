@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { executeServerAppsScriptPush } from './_shared';
+import { executeServerAppsScriptPush } from './_shared.js';
 
 export const maxDuration = 60;
 

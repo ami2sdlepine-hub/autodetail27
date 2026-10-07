@@ -1,1 +1,1 @@
-export { default } from './confirm-stripe-order';
+export { default } from './confirm-stripe-order.js';

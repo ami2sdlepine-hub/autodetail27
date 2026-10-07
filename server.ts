@@ -122,7 +122,11 @@ async function executeServerAppsScriptPush(orderPayload: any): Promise<{ success
   return { success: false, error: lastError, attempts: MAX_ATTEMPTS };
 }
 
-// 1. Stripe Webhook endpoint (raw body for signature verification)
+// 1. Stripe Webhook endpoint
+app.get('/api/stripe-webhook', (_req, res) => {
+  res.status(405).json({ error: 'Method Not Allowed' });
+});
+
 app.post(
   '/api/stripe-webhook',
   express.raw({ type: 'application/json' }),

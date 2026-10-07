@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
-import { stripeSecretKey } from './_shared';
+import { stripeSecretKey } from './_shared.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS configuration
