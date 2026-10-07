@@ -1,8 +1,8 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
+import { stripeSecretKey } from './_shared';
 
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
-
-export default async function handler(req: any, res: any) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS configuration
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -13,8 +13,7 @@ export default async function handler(req: any, res: any) {
   );
 
   if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
+    return res.status(200).end();
   }
 
   if (req.method !== 'POST') {
@@ -33,7 +32,7 @@ export default async function handler(req: any, res: any) {
   });
 
   try {
-    const { items, orderRef, customerEmail, shippingCost, carrierName, originUrl } = req.body || {};
+    const { items, customerEmail, shippingCost, carrierName, originUrl, orderPayload } = req.body || {};
 
     const lineItems = (items || []).map((item: any) => ({
       price_data: {
@@ -61,20 +60,19 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    const host = originUrl || req.headers?.origin || 'https://www.autodetail27.fr';
+    const host = originUrl || (req.headers?.origin as string) || 'https://www.autodetail27.fr';
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
       customer_email: customerEmail || undefined,
-      client_reference_id: orderRef,
       metadata: {
-        orderRef: orderRef || '',
         carrier: carrierName || '',
+        customerName: orderPayload?.customerName || '',
       },
-      success_url: `${host}/?session_id={CHECKOUT_SESSION_ID}&order_ref=${orderRef}&payment=success`,
-      cancel_url: `${host}/?order_ref=${orderRef}&payment=cancelled`,
+      success_url: `${host}/?session_id={CHECKOUT_SESSION_ID}&payment=success`,
+      cancel_url: `${host}/?payment=cancelled`,
     });
 
     return res.status(200).json({ url: session.url, sessionId: session.id });

@@ -1,10 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { stripeSecretKey } from './_shared';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
   res.setHeader(
     'Access-Control-Allow-Headers',
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
@@ -14,8 +13,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).end();
   }
 
-  return res.status(200).json({
-    configured: Boolean(stripeSecretKey && stripeSecretKey.startsWith('sk_')),
-    mode: stripeSecretKey.startsWith('sk_live_') ? 'live' : stripeSecretKey.startsWith('sk_test_') ? 'test' : 'none',
-  });
+  const alertData = req.body;
+  console.error('[ALERTE CRITIQUE - ÉCHEC TRANSMISSION COMMANDE]', JSON.stringify(alertData, null, 2));
+  return res.status(200).json({ acknowledged: true });
 }
